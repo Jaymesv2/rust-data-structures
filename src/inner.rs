@@ -225,6 +225,31 @@ where
         }
         None
     }
+
+    pub fn iter<'a>(&'a self) -> HashTableInnerIter<'a, K,V,S> {
+        let mut index = 0;
+
+        let current_node = if self.capacity != 0 {
+            loop {
+                if index+1 > self.capacity {
+                    break None
+                }
+                if let Some(s) = unsafe {*self.ptr.as_ptr().add(index)} {
+                    index += 1;
+                    break Some(s)
+                }
+                index += 1;
+            }
+        } else {
+            None
+        };
+
+        HashTableInnerIter { 
+            table: self, 
+            index, 
+            current_node, 
+        }
+    }
 }
 
 impl<K, V, H> Drop for HashTableInner<K, V, H> {
@@ -249,6 +274,40 @@ impl<K, V, H> Drop for HashTableInner<K, V, H> {
     }
 }
 
+pub struct HashTableInnerIter<'a, K,V,S> {
+    table: &'a HashTableInner<K,V,S>,
+    index: usize,
+    current_node: Option<ElementPtr<K,V>>,
+}
+
+impl<'a, K, V,S> Iterator for HashTableInnerIter<'a, K,V,S> {
+    type Item = &'a SinglyLinkedList<K,V>;
+    
+    fn next(&mut self) -> Option<Self::Item> {
+        unsafe {
+            if let Some(x) = self.current_node.map(|x| x.as_ref()) {
+                if let Some(y) = x.next {
+                    self.current_node = Some(y)
+                } else {
+                    self.current_node = loop {
+                        if self.index+1 > self.table.capacity {
+                            break None
+                        }
+                        if let Some(s) = *self.table.ptr.as_ptr().add(self.index) {
+                            self.index += 1;
+                            break Some(s)
+                        }
+                        self.index += 1;
+                    };
+                }
+                Some(x)
+            } else {
+                None
+            }
+        }
+    }
+}
+
 pub struct SinglyLinkedList<K, V> {
     pub key: K,
     pub val: V,
@@ -263,7 +322,6 @@ impl<K, V> SinglyLinkedList<K, V> {
             next: None,
         }
     }
-    ///
     /// # Safety
     /// the caller is in charge of deallocation
     pub unsafe fn ptr_to_new(k: K, v: V) -> ElementPtr<K, V> {
@@ -283,8 +341,6 @@ impl<K, V> SinglyLinkedList<K, V> {
 }
 
 
-
-
 impl<K: Debug, V: Debug> SinglyLinkedList<K, V> {
     fn write(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "({:?}, {:?})", &self.key, &self.val)
@@ -294,36 +350,6 @@ impl<K: Debug, V: Debug> SinglyLinkedList<K, V> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    /* 
-    #[cfg(not(miri))]
-    use test::Bencher;
-
-    #[bench]
-    #[cfg(not(miri))]
-    fn local_insert_bench(b: &mut Bencher) {
-        let mut h = hashtable_with_capacity(0);
-        let mut i: i64 = 0;
-        b.iter(|| {
-            let ptr = unsafe {SinglyLinkedList::ptr_to_new(i, i)};
-            h.insert(ptr);
-            i += 1;
-        })
-    }
-
-    #[bench]
-    #[cfg(not(miri))]
-    fn local_get_bench(b: &mut Bencher) {
-        let mut h = hashtable_with_capacity(0);
-        for i in 0..10000 {
-            let ptr = unsafe {SinglyLinkedList::ptr_to_new(i, i)};
-            h.insert(ptr);
-        }
-        let mut i: i64 = 0;
-        b.iter(|| {
-            h.get(&i);
-            i += 1;
-        })
-    }*/
 
     #[test]
     #[cfg(miri)]
@@ -376,6 +402,36 @@ mod tests {
                 Layout::new::<SinglyLinkedList<KV, KV>>(),
             )
         };
+    }
+
+
+    #[test]
+    fn inner_iter_test() {
+        type KV = i32;
+
+        unsafe {
+            const CAP: KV = 25;
+            let mut a = hashtable_with_capacity(0);
+            let v: Vec<KV> = (0..CAP).collect::<Vec<_>>();
+            for i in v.iter().copied() {
+                let ptr = SinglyLinkedList::ptr_to_new(i, i);
+                a.insert(ptr);
+            }
+
+            println!("{:?}", &a);
+
+            let mut u: Vec<KV> = a.iter().map(|x| x.val).collect();
+            u.sort();
+
+            assert_eq!(v,u);
+        }
+    }
+
+    #[test]
+    #[cfg(miri)]
+    fn empty_iter() {
+        let a: HashTableInner<(), ()> = hashtable_with_capacity(0);
+        let _u = a.iter().collect::<Vec<_>>();
     }
 
     /// set capacity to 0 to get the equivivelant of Hashtable::new()

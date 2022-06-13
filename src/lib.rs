@@ -2,19 +2,60 @@
 
 // TODO: optimize the insert and grow functions
 
-
+mod tester;
 
 extern crate test;
 
-mod inner;
+mod seperate_chaining;
 
-//use std::alloc::{alloc, dealloc, Layout};
-//use std::ptr::{self};
-use std::collections::hash_map::RandomState;
-use std::hash::{BuildHasher, Hash};
+use std::{
+    collections::hash_map::RandomState,
+    hash::{BuildHasher, Hash},
+};
+
+use seperate_chaining::{HashTableInner, SinglyLinkedList, HashTableInnerIter};
 
 
-use inner::{HashTableInner, SinglyLinkedList, HashTableInnerIter};
+trait HashTableImpl: Default {
+    type Key: Hash + Eq;
+    type Value;
+    type HashBuilder: BuildHasher;
+
+    fn with_hasher(hash_builder: Self::HashBuilder) -> Self {
+        Self::with_capacity_and_hasher(0, hash_builder)
+    }
+    fn with_capacity_and_hasher(capacity: usize, hash_builder: Self::HashBuilder) -> Self;
+    fn insert(&mut self, key: Self::Key, value: Self::Value) -> Option<Self::Value>;
+    fn remove(&mut self, key: &Self::Key) -> Option<&Self::Value>;
+    fn get(&self, key: &Self::Key) -> Option<Self::Value>;
+}
+
+trait HashTableImplIters<'a>: HashTableImpl 
+where
+    Self: 'a
+{
+    type Iter: Iterator<Item = (&'a Self::Key, &'a Self::Value)>;
+    type IterMut: Iterator<Item = (&'a mut Self::Key, &'a mut Self::Value)>;
+    type DrainIter: Iterator<Item = (Self::Key, Self::Value)>;
+    type KeysIter: Iterator<Item = &'a Self::Key>;
+    type ValuesIter: Iterator<Item = &'a Self::Value>;
+    fn iter(&self) -> Self::Iter;
+    fn iter_mut(&mut self) -> Self::IterMut;
+    fn drain(&mut self) -> Self::DrainIter;
+    fn keys(&self) -> Self::Key;
+    fn values(&self) -> Self::Value;
+}
+
+trait HashTableImplDefaultHasher: HashTableImpl<HashBuilder = RandomState> {
+    fn new() -> Self {
+        Self::with_capacity(0)
+    }
+    fn with_capacity(capacity: usize) -> Self {
+        Self::with_capacity_and_hasher(capacity, RandomState::new())
+    }
+}
+
+impl<T: HashTableImpl<HashBuilder = RandomState>> HashTableImplDefaultHasher for T {}
 
 pub struct HashTable<K, V, S = RandomState> {
     inner: HashTableInner<K, V, S>,

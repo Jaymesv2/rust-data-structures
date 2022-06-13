@@ -308,6 +308,32 @@ impl<'a, K, V,S> Iterator for HashTableInnerIter<'a, K,V,S> {
     }
 }
 
+struct Bucket<K,V> {
+    head: Option<ElementPtr<K,V>>
+}
+
+impl<K: Hash + Eq,V> Bucket<K,V> {
+    pub fn insert(&mut self, node: ElementPtr<K,V>) {
+        todo!()
+    }
+
+    pub fn get(&self, key: &K) -> Option<ElementPtr<K,V>> {
+        todo!()
+    }
+
+    pub fn remove(&self, key: &K) -> Option<ElementPtr<K,V>> {
+        todo!()
+    }
+
+    pub fn contains(&self, key: &K) -> bool {
+        todo!()
+    }
+
+    //pub fn iter(&self) -> impl Iterator<Item = ElementPtr<K,V>> {todo!()}
+    //pub fn drain(&mut self) -> impl Iterator<Item = ElementPtr<K,V>> {todo!()}
+}
+
+
 pub struct SinglyLinkedList<K, V> {
     pub key: K,
     pub val: V,

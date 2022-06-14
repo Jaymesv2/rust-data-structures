@@ -19,12 +19,25 @@ pub struct HashTableInner<K, V, S = RandomState> {
     size: usize,
     hash_builder: S,
 }
+/*
+impl<K:Debug,V:Debug> Debug for HashTableInner<K,V>{
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let mut iter = self.iter();
+        write!(f, "HashTable {{")?;
+        if let Some(s) = iter.next() {
+            write!("{}")
+        }
+        for elem in iter {
+
+        }
+    }
+}*/
 
 impl<K: Debug, V: Debug, H> Debug for HashTableInner<K, V, H> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Hashtable, capacity: {}, size: {}, {{",
+            "Hashtable {{ capacity: {}, size: {}, {{",
             &self.capacity, &self.size
         )?;
         let mut item = self.ptr.as_ptr();
@@ -42,7 +55,7 @@ impl<K: Debug, V: Debug, H> Debug for HashTableInner<K, V, H> {
                 write!(f, "}}, ")?;
             }
         }
-        write!(f, "}}")
+        write!(f, "}} }}")
     }
 }
 
@@ -107,8 +120,6 @@ where
         self.ptr = new_ptr;
         self.capacity = new_capacity;
 
-        
-
         // move elements from old area to new area and dealloc old area
         if old_capacity != 0 {
             unsafe {
@@ -117,7 +128,7 @@ where
                     let mut head = *current;
                     while let Some(mut elem) = head {
                         head = elem.as_ref().next;
-                        
+
                         let index = self.key_index(&elem.as_ref().key);
 
                         let p = self.ptr.as_ptr().add(index);
@@ -173,6 +184,12 @@ where
     /// clears the next element from the sll
     unsafe fn insert_node(&mut self, mut o_node: ElementPtr<K, V>) -> Option<ElementPtr<K, V>> {
         let p = self.ptr.as_ptr().add(self.key_index(&o_node.as_ref().key));
+        let rem = self.remove(&o_node.as_ref().key);
+        o_node.as_mut().next = *p;
+        *p = Some(o_node);
+        rem
+        // TODO: this is bugged
+        /* 
         match *p {
             Some(mut prev) if prev.as_ref().key != o_node.as_ref().key => {
                 while let Some(mut cur) = prev.as_ref().next {
@@ -180,12 +197,12 @@ where
                         o_node.as_mut().next = cur.as_ref().next;
                         cur.as_mut().next = None;
                         prev.as_mut().next = Some(o_node);
-                        
+
                         return Some(cur);
                     }
                     prev = cur;
                 }
-                
+
                 debug_assert!(prev.as_ref().next.is_none());
                 prev.as_mut().next = Some(o_node);
                 o_node.as_mut().next = None;
@@ -196,7 +213,7 @@ where
                 *p = Some(o_node);
                 s
             }
-        }
+        }*/
     }
 
     pub fn remove(&mut self, k: &K) -> Option<ElementPtr<K, V>> {
@@ -226,17 +243,17 @@ where
         None
     }
 
-    pub fn iter<'a>(&'a self) -> HashTableInnerIter<'a, K,V,S> {
+    pub fn iter<'a>(&'a self) -> HashTableInnerIter<'a, K, V, S> {
         let mut index = 0;
 
         let current_node = if self.capacity != 0 {
             loop {
-                if index+1 > self.capacity {
-                    break None
+                if index + 1 > self.capacity {
+                    break None;
                 }
-                if let Some(s) = unsafe {*self.ptr.as_ptr().add(index)} {
+                if let Some(s) = unsafe { *self.ptr.as_ptr().add(index) } {
                     index += 1;
-                    break Some(s)
+                    break Some(s);
                 }
                 index += 1;
             }
@@ -244,10 +261,10 @@ where
             None
         };
 
-        HashTableInnerIter { 
-            table: self, 
-            index, 
-            current_node, 
+        HashTableInnerIter {
+            table: self,
+            index,
+            current_node,
         }
     }
 }
@@ -274,15 +291,15 @@ impl<K, V, H> Drop for HashTableInner<K, V, H> {
     }
 }
 
-pub struct HashTableInnerIter<'a, K,V,S> {
-    table: &'a HashTableInner<K,V,S>,
+pub struct HashTableInnerIter<'a, K, V, S> {
+    table: &'a HashTableInner<K, V, S>,
     index: usize,
-    current_node: Option<ElementPtr<K,V>>,
+    current_node: Option<ElementPtr<K, V>>,
 }
 
-impl<'a, K, V,S> Iterator for HashTableInnerIter<'a, K,V,S> {
-    type Item = &'a SinglyLinkedList<K,V>;
-    
+impl<'a, K, V, S> Iterator for HashTableInnerIter<'a, K, V, S> {
+    type Item = &'a SinglyLinkedList<K, V>;
+
     fn next(&mut self) -> Option<Self::Item> {
         unsafe {
             if let Some(x) = self.current_node.map(|x| x.as_ref()) {
@@ -290,12 +307,12 @@ impl<'a, K, V,S> Iterator for HashTableInnerIter<'a, K,V,S> {
                     self.current_node = Some(y)
                 } else {
                     self.current_node = loop {
-                        if self.index+1 > self.table.capacity {
-                            break None
+                        if self.index + 1 > self.table.capacity {
+                            break None;
                         }
                         if let Some(s) = *self.table.ptr.as_ptr().add(self.index) {
                             self.index += 1;
-                            break Some(s)
+                            break Some(s);
                         }
                         self.index += 1;
                     };
@@ -308,20 +325,20 @@ impl<'a, K, V,S> Iterator for HashTableInnerIter<'a, K,V,S> {
     }
 }
 
-struct Bucket<K,V> {
-    head: Option<ElementPtr<K,V>>
+struct Bucket<K, V> {
+    head: Option<ElementPtr<K, V>>,
 }
 
-impl<K: Hash + Eq,V> Bucket<K,V> {
-    pub fn insert(&mut self, node: ElementPtr<K,V>) {
+impl<K: Hash + Eq, V> Bucket<K, V> {
+    pub fn insert(&mut self, node: ElementPtr<K, V>) {
         todo!()
     }
 
-    pub fn get(&self, key: &K) -> Option<ElementPtr<K,V>> {
+    pub fn get(&self, key: &K) -> Option<ElementPtr<K, V>> {
         todo!()
     }
 
-    pub fn remove(&self, key: &K) -> Option<ElementPtr<K,V>> {
+    pub fn remove(&self, key: &K) -> Option<ElementPtr<K, V>> {
         todo!()
     }
 
@@ -332,7 +349,6 @@ impl<K: Hash + Eq,V> Bucket<K,V> {
     //pub fn iter(&self) -> impl Iterator<Item = ElementPtr<K,V>> {todo!()}
     //pub fn drain(&mut self) -> impl Iterator<Item = ElementPtr<K,V>> {todo!()}
 }
-
 
 pub struct SinglyLinkedList<K, V> {
     pub key: K,
@@ -358,7 +374,7 @@ impl<K, V> SinglyLinkedList<K, V> {
         NonNull::new_unchecked(ptr)
     }
 
-    pub unsafe fn extract_val_from_sll(mut s: ElementPtr<K,V>) -> V {
+    pub unsafe fn extract_val_from_sll(mut s: ElementPtr<K, V>) -> V {
         let v: V = ptr::read(&s.as_ref().val);
         ptr::drop_in_place(&mut s.as_mut().key as *mut K);
         dealloc(s.cast().as_ptr(), Layout::new::<SinglyLinkedList<K, V>>());
@@ -366,10 +382,14 @@ impl<K, V> SinglyLinkedList<K, V> {
     }
 }
 
-
 impl<K: Debug, V: Debug> SinglyLinkedList<K, V> {
     fn write(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "({:?}, {:?})", &self.key, &self.val)
+        write!(f, "({:?}, {:?})", &self.key, &self.val)?;
+        if let Some(s) = self.next.map(|c| unsafe {c.as_ref()}) {
+            write!(f, ", next_key: {:?}", &s.key)
+        } else {
+            write!(f, ")")
+        }
     }
 }
 
@@ -398,7 +418,7 @@ mod tests {
             a.insert(ptr);
         }
     }
-    
+
     #[test]
     fn insert_drop_inner() {
         let mut a = hashtable_with_capacity(0);
@@ -430,7 +450,6 @@ mod tests {
         };
     }
 
-
     #[test]
     fn inner_iter_test() {
         type KV = i32;
@@ -449,7 +468,7 @@ mod tests {
             let mut u: Vec<KV> = a.iter().map(|x| x.val).collect();
             u.sort();
 
-            assert_eq!(v,u);
+            assert_eq!(v, u);
         }
     }
 

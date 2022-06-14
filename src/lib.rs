@@ -1,4 +1,4 @@
-#![feature(test, variant_count)]
+#![feature(test, variant_count, iter_intersperse)]
 
 // TODO: optimize the insert and grow functions
 #[cfg(test)]
@@ -9,13 +9,13 @@ extern crate test;
 mod seperate_chaining;
 
 use std::{
-    collections::hash_map::RandomState,
     hash::{BuildHasher, Hash},
+    fmt::Debug,
 };
 
-use seperate_chaining::{HashTableInner, HashTableInnerIter, SinglyLinkedList};
+pub use seperate_chaining::SCHashTable;
 
-trait HashTableImpl<K: Hash + Eq + Debug, V: Debug, S: BuildHasher + Default>: Default {
+trait HashTable<K: Hash + Eq + Debug, V: Debug, S: BuildHasher + Default>: Default {
     fn new() -> Self {
         Self::with_capacity(0)
     }
@@ -29,9 +29,10 @@ trait HashTableImpl<K: Hash + Eq + Debug, V: Debug, S: BuildHasher + Default>: D
     fn insert(&mut self, key: K, value: V) -> Option<V>;
     fn remove(&mut self, key: &K) -> Option<V>;
     fn get(&self, key: &K) -> Option<&V>;
+    fn len(&self) -> usize;
 }
 
-impl<K, V, S> HashTableImpl<K, V, S> for std::collections::HashMap<K, V, S>
+impl<K, V, S> HashTable<K, V, S> for std::collections::HashMap<K, V, S>
 where
     K: Hash + Eq + Debug,
     S: BuildHasher + Default,
@@ -49,30 +50,13 @@ where
     fn get(&self, key: &K) -> Option<&V> {
         self.get(key)
     }
-}
-
-impl<K, V, S> HashTableImpl<K, V, S> for HashTable<K, V, S>
-where
-    K: Hash + Eq + Debug,
-    S: BuildHasher + Default,
-    V: Debug,
-{
-    fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> Self {
-        HashTable::with_capacity_and_hasher(capacity, hash_builder)
-    }
-    fn insert(&mut self, key: K, value: V) -> Option<V> {
-        HashTable::insert(self, key, value)
-    }
-    fn remove(&mut self, key: &K) -> Option<V> {
-        HashTable::remove(self, key)
-    }
-    fn get(&self, key: &K) -> Option<&V> {
-        HashTable::get(self, key)
+    fn len(&self) -> usize {
+        self.len()
     }
 }
 
 /*
-trait HashTableImplIters<'a>: HashTableImpl
+trait SCHashTableImplIters<'a>: SCHashTableImpl
 where
     Self: 'a
 {
@@ -87,12 +71,36 @@ where
     fn keys(&self) -> Self::Key;
     fn values(&self) -> Self::Value;
 }*/
-
-pub struct HashTable<K, V, S = RandomState> {
-    inner: HashTableInner<K, V, S>,
+/* 
+impl<K, V, S> SCHashTableImpl<K, V, S> for SCHashTable<K, V, S>
+where
+    K: Hash + Eq + Debug,
+    S: BuildHasher + Default,
+    V: Debug,
+{
+    fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> Self {
+        SCHashTable::with_capacity_and_hasher(capacity, hash_builder)
+    }
+    fn insert(&mut self, key: K, value: V) -> Option<V> {
+        SCHashTable::insert(self, key, value)
+    }
+    fn remove(&mut self, key: &K) -> Option<V> {
+        SCHashTable::remove(self, key)
+    }
+    fn get(&self, key: &K) -> Option<&V> {
+        SCHashTable::get(self, key)
+    }
+    fn len(&self) -> usize {
+        SCHashTable::len(&self)
+    }
 }
 
-impl<K, V> HashTable<K, V, RandomState> {
+
+pub struct SCHashTable<K, V, S = RandomState> {
+    inner: SCHashTableInner<K, V, S>,
+}
+
+impl<K, V> SCHashTable<K, V, RandomState> {
     pub fn new() -> Self {
         Self::default()
     }
@@ -102,28 +110,31 @@ impl<K, V> HashTable<K, V, RandomState> {
     }
 }
 
-impl<K, V, S: Default + BuildHasher> Default for HashTable<K, V, S> {
+impl<K, V, S: Default + BuildHasher> Default for SCHashTable<K, V, S> {
     fn default() -> Self {
         Self::with_hasher(S::default())
     }
 }
 
-impl<K, V, S> HashTable<K, V, S>
+impl<K, V, S> SCHashTable<K, V, S>
 where
     S: BuildHasher,
 {
+    pub fn len(&self) -> usize {
+        self.inner.len()
+    }
     pub fn with_hasher(hash_builder: S) -> Self {
         Self::with_capacity_and_hasher(0, hash_builder)
     }
 
     pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> Self {
         Self {
-            inner: HashTableInner::with_capacity_and_hasher(capacity, hash_builder),
+            inner: SCHashTableInner::with_capacity_and_hasher(capacity, hash_builder),
         }
     }
 }
 
-impl<K, V, S> HashTable<K, V, S>
+impl<K, V, S> SCHashTable<K, V, S>
 where
     S: BuildHasher,
     K: Hash + Eq + Debug,
@@ -131,7 +142,7 @@ where
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
         unsafe {
             self.inner
-                .insert(SinglyLinkedList::ptr_to_new(k, v))
+                .insert_node(SinglyLinkedList::ptr_to_new(k, v))
                 .map(|v| SinglyLinkedList::extract_val_from_sll(v))
         }
     }
@@ -152,172 +163,31 @@ where
             .map(|v| unsafe { SinglyLinkedList::extract_val_from_sll(v) })
     }
 
-    pub fn iter<'a>(&'a self) -> HashTableIter<'a, K, V, S> {
-        HashTableIter {
+    pub fn iter<'a>(&'a self) -> SCHashTableIter<'a, K, V> {
+        SCHashTableIter {
             inner: self.inner.iter(),
         }
     }
 }
 
-pub struct HashTableIter<'a, K, V, S> {
-    inner: HashTableInnerIter<'a, K, V, S>,
+pub struct SCHashTableIter<'a, K, V> {
+    inner: SCHashTableInnerIter<'a, K, V>,
 }
 
-impl<'a, K, V, S> Iterator for HashTableIter<'a, K, V, S> {
+impl<'a, K, V> Iterator for SCHashTableIter<'a, K, V> {
     type Item = (&'a K, &'a V);
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next().map(|item| (&item.key, &item.val))
+        self.inner.next().map(|item| unsafe{(&item.as_ref().key, &item.as_ref().val)})
     }
 }
 
-/*
-use std::iter::{
-    self, DoubleEndedIterator, ExactSizeIterator, Extend, FromIterator, IntoIterator, Iterator,
-};*/
 
 use std::fmt::{self, Debug, Display, Formatter};
 
-impl<K: Debug, V: Debug, S> Debug for HashTable<K, V, S> {
+impl<K: Debug, V: Debug, S> Debug for SCHashTable<K, V, S> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", &self.inner)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[cfg(not(miri))]
-    use test::Bencher;
-    #[bench]
-    #[cfg(not(miri))]
-    fn std_insert_bench(b: &mut Bencher) {
-        use std::collections::HashMap;
-        let mut h = HashMap::new();
-        let mut i: i64 = 0;
-        b.iter(|| {
-            h.insert(i, i);
-            i += 1;
-        })
-    }
-
-    #[bench]
-    #[cfg(not(miri))]
-    fn local_insert_bench(b: &mut Bencher) {
-        let mut h = HashTable::new();
-        let mut i: i64 = 0;
-        b.iter(|| {
-            h.insert(i, i);
-            i += 1;
-        })
-    }
-
-    #[bench]
-    #[cfg(not(miri))]
-    fn std_get_bench(b: &mut Bencher) {
-        use std::collections::HashMap;
-        let mut h = HashMap::new();
-        for i in 0..10000 {
-            h.insert(i, i);
-        }
-        let mut i: i64 = 0;
-        b.iter(|| {
-            h.get(&i);
-            i += 1;
-        })
-    }
-
-    #[bench]
-    #[cfg(not(miri))]
-    fn local_get_bench(b: &mut Bencher) {
-        let mut h = HashTable::new();
-        for i in 0..10000 {
-            h.insert(i, i);
-        }
-        let mut i: i64 = 0;
-        b.iter(|| {
-            h.get(&i);
-            i += 1;
-        })
-    }
-
-    #[test]
-    #[cfg(miri)]
-    fn create_and_drop_inner() {
-        let _a = HashTable::<i32, i32>::new();
-    }
-
-    #[test]
-    #[cfg(miri)]
-    fn create_with_capacity_inner() {
-        let _a = HashTable::<i32, i32>::with_capacity(100);
-    }
-
-    #[test]
-    #[cfg(miri)]
-    fn insert_growth_drop_inner() {
-        let mut a = HashTable::with_capacity(5);
-        for i in 0..5 {
-            a.insert(1, 1);
-        }
-    }
-
-    #[test]
-    fn insert_drop_inner() {
-        let mut a = HashTable::new();
-        a.insert(1, 1);
-    }
-
-    #[test]
-    fn remove_nothing_inner() {
-        let mut a = HashTable::<_, i32>::new();
-        assert!(a.remove(&1).is_none());
-    }
-
-    #[test]
-    fn insert_remove_inner() {
-        let mut a = HashTable::with_capacity(0);
-        a.insert(1, 1);
-        let i = a.remove(&1).unwrap();
-        assert_eq!(i, 1);
-    }
-
-    #[test]
-    fn insert_and_remove() {
-        use rand::*;
-        const CAPACITY: usize = 1000;
-
-        let mut v: Vec<u64> = vec![0; CAPACITY];
-        thread_rng().try_fill(&mut v[0..CAPACITY]).unwrap();
-        v.sort();
-
-        let mut a = HashTable::with_capacity(CAPACITY);
-        for i in v.iter() {
-            a.insert(*i, *i);
-        }
-
-        let mut r: Vec<u64> = Vec::with_capacity(CAPACITY);
-        for i in v.iter() {
-            r.push(*a.get(i).unwrap());
-        }
-
-        assert_eq!(r, v);
-    }
-
-    #[test]
-    fn iter_test() {
-        const CAPACITY: usize = 1000;
-
-        let mut h = HashTable::with_capacity(CAPACITY);
-        let v = (0..CAPACITY).collect::<Vec<_>>();
-        for i in v.iter().copied() {
-            h.insert(i, i);
-        }
-
-        let mut u = h.iter().map(|c| c.1).copied().collect::<Vec<_>>();
-        u.sort();
-
-        assert_eq!(u, v)
-    }
-}
+*/

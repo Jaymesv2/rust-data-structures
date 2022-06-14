@@ -1,14 +1,14 @@
-use crate::HashTableImpl;
+use crate::HashTable;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::{BuildHasher, Hash};
 use std::marker::PhantomData;
 
 use rand::distributions::{Distribution, Standard};
-use rand::{Fill, SeedableRng};
+use rand::SeedableRng;
 use rand::rngs::StdRng;
 
-use std::collections::hash_map::{RandomState, DefaultHasher};
+use std::collections::hash_map::RandomState;
 /* 
 
 unsafe fn randomstate_from_seed(seed: [u8;32]) -> RandomState {
@@ -24,7 +24,7 @@ fn run_test() {
     //let seed = Some([106, 115, 125, 98, 35, 103, 155, 128, 225, 226, 14, 60, 5, 203, 73, 72, 97, 49, 214, 19, 115, 143, 170, 192, 81, 70, 103, 102, 196, 89, 69, 106]);
     for _ in 0..1000 {
         //if let Err(report) = test_hashtable::<crate::HashTable<u8, i64, RandomState>, _, _, RandomState, StdRng>(seed, 4, Some(3)) {
-        if let Err(report) = test_hashtable::<crate::HashTable<u8, i64, RandomState>, _, _, RandomState, StdRng>(seed, 1000, None) {
+        if let Err(report) = test_hashtable::<crate::SCHashTable<u8, i64, RandomState>, _, _, RandomState, StdRng>(seed, 1000, None) {
             println!("{:?}", report);
             report.playback();
             panic!("died");
@@ -55,7 +55,7 @@ impl DeterministicHasher for RandomState {
 
 fn test_hashtable<H, K, V, S, R>(seed: Option<R::Seed>, ops: usize, starting_capacity: Option<usize>) -> Result<(), HashTableFailure<H, K, V, S, R>>
 where
-    H: HashTableImpl<K, V, S> + Default + Debug,
+    H: HashTable<K, V, S> + Default + Debug,
     K: Hash + Eq + Copy + Eq + Debug,
     V: Copy + Eq + Debug,
     S: BuildHasher + DeterministicHasher<Seed = R::Seed> + Default,
@@ -98,7 +98,7 @@ use std::iter::*;
 #[derive(Debug)]
 struct HashTableFailure<H, K, V, S, R>
 where
-    H: HashTableImpl<K, V, S> + Default + Debug,
+    H: HashTable<K, V, S> + Default + Debug,
     S: BuildHasher + Default,
     R: SeedableRng + Rng,
     R::Seed: Clone,
@@ -108,7 +108,9 @@ where
     pub seed: R::Seed,
     pub starting_capacity: usize,
     pub table: H,
+    #[allow(dead_code)]
     pub data: HashMap<K, V>,
+    #[allow(dead_code)]
     pub operations: Vec<(Operation<K, V>, Option<V>)>,
     pub op_num: usize,
     marker: PhantomData<S>,
@@ -116,7 +118,7 @@ where
 
 impl<H, K, V, S, R> HashTableFailure<H, K, V, S, R>
 where
-    H: HashTableImpl<K, V, S> + Default + Debug,
+    H: HashTable<K, V, S> + Default + Debug,
     S: BuildHasher + DeterministicHasher<Seed = R::Seed> +Default,
     R: SeedableRng + Rng,
     R::Seed: Clone,
@@ -235,7 +237,7 @@ where
     K: Hash + Eq + Copy + Eq + Debug,
     V: Copy + Eq + Debug,
 {
-    fn apply<S: BuildHasher + Default, H: HashTableImpl<K, V, S>>(
+    fn apply<S: BuildHasher + Default, H: HashTable<K, V, S>>(
         &self,
         table: &mut H,
     ) -> Option<V> {

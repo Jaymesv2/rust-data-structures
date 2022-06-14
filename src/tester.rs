@@ -22,9 +22,13 @@ fn run_test() {
     //let seed = Some([156, 193, 116, 26, 251, 136, 38, 106, 25, 11, 3, 103, 121, 63, 45, 216, 137, 198, 232, 43, 43, 113, 252, 174, 158, 83, 147, 231, 40, 230, 246, 215]);
     let seed = None;
     //let seed = Some([106, 115, 125, 98, 35, 103, 155, 128, 225, 226, 14, 60, 5, 203, 73, 72, 97, 49, 214, 19, 115, 143, 170, 192, 81, 70, 103, 102, 196, 89, 69, 106]);
-    for _ in 0..1000 {
+    #[cfg(miri)]
+    let count = 10;
+    #[cfg(not(miri))]
+    let count = 1000;
+    for _ in 0..count {
         //if let Err(report) = test_hashtable::<crate::HashTable<u8, i64, RandomState>, _, _, RandomState, StdRng>(seed, 4, Some(3)) {
-        if let Err(report) = test_hashtable::<crate::SCHashTable<u8, i64, RandomState>, _, _, RandomState, StdRng>(seed, 1000, None) {
+        if let Err(report) = test_hashtable::<crate::SCHashTable<u8, i64, RandomState>, _, _, RandomState, StdRng>(seed, 100, None) {
             println!("{:?}", report);
             report.playback();
             panic!("died");
@@ -149,8 +153,6 @@ where
         
     }
 }
-
-
 
 struct OperationGenerator<K, V, R = StdRng>
 where

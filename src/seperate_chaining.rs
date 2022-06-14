@@ -624,7 +624,7 @@ mod pub_api_tests {
     #[test]
     #[cfg(miri)]
     fn insert_growth_drop_inner() {
-        let mut a = SCHashTable::with_capacity(5);
+        let mut a = SCHashTable::<_,_,RandomState>::with_capacity(5);
         for i in 0..5 {
             a.insert(1, 1);
         }

@@ -4,7 +4,6 @@ use core::ptr;
 pub type ElementPtr<K, V> = NonNull<SinglyLinkedListNode<K, V>>;
 
 pub struct SLLBucket<K, V, A: Allocator + Clone> {
-    //head: Option<ElementPtr<K, V>>,
     head: Option<ElementPtr<K, V>>,
     alloc: A,
 }

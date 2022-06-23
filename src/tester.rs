@@ -27,7 +27,7 @@ fn run_test() {
         //if let Err(report) = test_hashtable::<crate::HashTable<u8, i64, RandomState>, _, _, RandomState, StdRng>(seed, 4, Some(3)) {
         if let Err(report) =
             test_hashtable::<SCHashTable<u8, i64, RandomState, Global>, _, _, RandomState, StdRng>(
-                seed, 100, None,
+                seed, 1000, None,
             )
         {
             println!("{:?}", report);

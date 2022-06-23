@@ -15,7 +15,7 @@ extern crate test;
 
 use std::{
     alloc::{Allocator, Global},
-    collections::hash_map::RandomState,
+    collections::hash_map::{RandomState},
     fmt::Debug,
     hash::{BuildHasher, Hash},
     marker::PhantomData,
@@ -23,7 +23,7 @@ use std::{
 
 use impls::traits::*;
 
-pub type SCHashTable<K, V, S, A> =
+pub type SCHashTable<K, V, S=RandomState, A=Global> =
     HashTable<K, V, S, A, impls::seperate_chaining::SLLHashTableImpl<K, V, S, A>>;
 
 pub struct HashTable<K, V, S, A, T>
@@ -44,8 +44,9 @@ where
     A: Allocator + Clone,
     T: HashTableImpl<K, V, S, A>,
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "hashtable :(")
+    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+        //write!(f, "hashtable :(")
     }
 }
 

@@ -21,7 +21,7 @@ use std::{
     marker::PhantomData,
 };
 
-use impls::traits::*;
+use impls::*;
 
 pub type SCHashTable<K, V, S=RandomState, A=Global> =
     HashTable<K, V, S, A, impls::seperate_chaining::SLLHashTableImpl<K, V, S, A>>;
@@ -64,7 +64,7 @@ where
     }
 }
 
-impl<K, V, S, A, T> impls::traits::HashTable<K, V, S, A> for HashTable<K, V, S, A, T>
+impl<K, V, S, A, T> impls::HashTable<K, V, S, A> for HashTable<K, V, S, A, T>
 where
     K: Eq + Hash,
     S: BuildHasher,

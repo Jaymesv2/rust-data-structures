@@ -13,7 +13,7 @@ use rand::{
 };
 
 use crate::SCHashTable;
-use impls::traits::HashTable;
+use impls::HashTable;
 
 const MIN_KEYS: usize = 1;
 #[test]

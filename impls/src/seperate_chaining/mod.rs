@@ -11,7 +11,7 @@ type ElementsPtr<K, V, A> = NonNull<SLLBucket<K, V, A>>;
 mod buckets;
 use buckets::*;
 
-use crate::traits::*;
+use crate::*;
 
 pub type SLLHashTableImpl<K, V, S, A> = SCHashTableImpl<K, V, S, SLLBucket<K, V, A>, A>;
 
@@ -191,105 +191,6 @@ impl<K: Eq + Hash, V, S: BuildHasher, B: Bucket<K, V, A>, A: Allocator + Clone>
     }
 }
 
-/*
-
-impl<K, V, S, A> SCHashTable<K, V, S, A>
-where
-    S: BuildHasher,
-    K: Hash + Eq + Debug,
-    A: Allocator + Clone
-{
-    fn key_index(&self, k: &K) -> usize {
-        let mut hasher = self.hash_builder.build_hasher();
-        k.hash(&mut hasher);
-        hasher.finish() as usize % self.capacity
-    }
-
-    fn grow(&mut self) -> Result<(), AllocError> {
-        let new_capacity = if self.capacity == 0 {
-            DEFAULT_SIZE
-        } else {
-            self.capacity * 2
-        };
-
-        let new_ptr = unsafe {Self::new_mem(new_capacity, &mut self.allocator)?};
-        let (old_ptr, old_capacity) = (self.ptr, self.capacity);
-
-        self.ptr = new_ptr;
-        self.capacity = new_capacity;
-
-        // move elements from old area to new area and dealloc old area
-        if old_capacity != 0 {
-            unsafe {
-                for bucket in slice::from_raw_parts_mut(old_ptr.as_ptr(), old_capacity) {
-                    if !bucket.is_empty() {
-                        for elem in bucket.iter() {
-                            self.insert_node_unchecked(elem);
-                        }
-                    }
-                }
-                self.allocator.deallocate(
-                    old_ptr.cast(),
-                    Layout::array::<NonNull<SLLBucket<K,V,A>>>(old_capacity).unwrap(),
-                );
-            }
-        }
-        Ok(())
-    }
-
-    pub fn get_node(&self, k: &K) -> Option<ElementPtr<K, V>> {
-        if self.capacity == 0 {
-            return None;
-        }
-        let index = self.key_index(k);
-
-        unsafe {
-            let s = slice::from_raw_parts(self.ptr.as_ptr(), self.capacity);
-            let p = s.get_unchecked(index);
-            p.get(k)
-        }
-    }
-
-
-
-    unsafe fn insert_node_unchecked(&mut self, o_node: ElementPtr<K,V>) {
-        let s = slice::from_raw_parts_mut(self.ptr.as_ptr(), self.capacity);
-        let p = s.get_unchecked_mut(self.key_index(&o_node.as_ref().key));
-        p.insert_unchecked(o_node)
-    }
-
-    pub fn insert_node(&mut self, node: ElementPtr<K, V>) -> Option<ElementPtr<K, V>> {
-        if self.len + 1 > self.capacity {
-            self.grow().expect("failed");
-        }
-        unsafe {
-            let s = slice::from_raw_parts_mut(self.ptr.as_ptr(), self.capacity);
-            let p = s.get_unchecked_mut(self.key_index(&node.as_ref().key));
-            let a = p.insert(node);
-            if a.is_none() {
-                self.len += 1;
-            }
-            a
-        }
-    }
-
-    pub fn remove_node(&mut self, k: &K) -> Option<ElementPtr<K, V>> {
-        if self.capacity == 0 {
-            return None;
-        }
-
-        let index = self.key_index(k);
-        unsafe {
-            let s = slice::from_raw_parts_mut(self.ptr.as_ptr(), self.capacity);
-            let p = s.get_unchecked_mut(index);
-            let a = p.remove(k);
-            if a.is_some() {
-                self.len -= 1;
-            }
-            a
-        }
-    }
-}*/
 /*impl<K,V,S: Default + BuildHasher, A: Allocator> Default for SCHashTable<K,V,S, A> {
     fn default() -> Self {
         Self::with_capacity_and_hasher_in(50, S::default(), De).unwrap()

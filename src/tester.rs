@@ -1,16 +1,20 @@
-use crate::HashTable;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::{BuildHasher, Hash};
 use std::marker::PhantomData;
+use std::alloc::Global;
+use std::collections::hash_map::RandomState;
 
 use rand::distributions::{Distribution, Standard};
 use rand::SeedableRng;
 use rand::rngs::StdRng;
 
-use std::collections::hash_map::RandomState;
-/* 
+use impls::traits::HashTable;
+use crate::SCHashTable;
 
+
+//use impls::*;
+/* 
 unsafe fn randomstate_from_seed(seed: [u8;32]) -> RandomState {
     
     //RandomState
@@ -28,7 +32,7 @@ fn run_test() {
     let count = 1000;
     for _ in 0..count {
         //if let Err(report) = test_hashtable::<crate::HashTable<u8, i64, RandomState>, _, _, RandomState, StdRng>(seed, 4, Some(3)) {
-        if let Err(report) = test_hashtable::<crate::SCHashTable<u8, i64, RandomState>, _, _, RandomState, StdRng>(seed, 100, None) {
+        if let Err(report) = test_hashtable::<SCHashTable<u8, i64, RandomState, Global>, _, _, RandomState, StdRng>(seed, 100, None) {
             println!("{:?}", report);
             report.playback();
             panic!("died");
@@ -59,10 +63,10 @@ impl DeterministicHasher for RandomState {
 
 fn test_hashtable<H, K, V, S, R>(seed: Option<R::Seed>, ops: usize, starting_capacity: Option<usize>) -> Result<(), HashTableFailure<H, K, V, S, R>>
 where
-    H: HashTable<K, V, S> + Default + Debug,
+    H: HashTable<K, V, S, Global> + Debug,
     K: Hash + Eq + Copy + Eq + Debug,
     V: Copy + Eq + Debug,
-    S: BuildHasher + DeterministicHasher<Seed = R::Seed> + Default,
+    S: BuildHasher + DeterministicHasher<Seed = R::Seed>,
     R: SeedableRng + Rng,
     R::Seed: Clone,
     Standard: Distribution<K>,
@@ -72,7 +76,7 @@ where
     let seed: R::Seed = seed.unwrap_or_else(|| rand::thread_rng().gen());
     let starting_capacity = starting_capacity.unwrap_or(50);
     let hash_builder = S::from_seed(seed.clone());
-    let mut table = H::with_capacity_and_hasher(starting_capacity, hash_builder);
+    let mut table = H::with_capacity_and_hasher_in(starting_capacity, hash_builder, Global).unwrap();
 
     let mut gen: OperationGenerator<K,V,R> = OperationGenerator::from_seed(seed.clone());
     let mut op_num = 0;
@@ -102,8 +106,8 @@ use std::iter::*;
 #[derive(Debug)]
 struct HashTableFailure<H, K, V, S, R>
 where
-    H: HashTable<K, V, S> + Default + Debug,
-    S: BuildHasher + Default,
+    H: HashTable<K, V, S,Global> + Debug,
+    S: BuildHasher,
     R: SeedableRng + Rng,
     R::Seed: Clone,
     K: Hash + Eq + Debug,
@@ -122,8 +126,8 @@ where
 
 impl<H, K, V, S, R> HashTableFailure<H, K, V, S, R>
 where
-    H: HashTable<K, V, S> + Default + Debug,
-    S: BuildHasher + DeterministicHasher<Seed = R::Seed> +Default,
+    H: HashTable<K, V, S, Global> + Debug,
+    S: BuildHasher + DeterministicHasher<Seed = R::Seed>,
     R: SeedableRng + Rng,
     R::Seed: Clone,
     K: Hash + Eq + Debug + Copy,
@@ -134,7 +138,7 @@ where
 {
     fn playback(&self) {
         println!("running playback");
-        let mut table = H::with_capacity_and_hasher(self.starting_capacity, S::from_seed(self.seed.clone()));
+        let mut table = H::with_capacity_and_hasher_in(self.starting_capacity, S::from_seed(self.seed.clone()), Global).expect("failed alloc");
 
         let mut gen: OperationGenerator<K,V,R> = OperationGenerator::from_seed(self.seed.clone());
         let lower = self.op_num.saturating_sub(5);
@@ -239,12 +243,12 @@ where
     K: Hash + Eq + Copy + Eq + Debug,
     V: Copy + Eq + Debug,
 {
-    fn apply<S: BuildHasher + Default, H: HashTable<K, V, S>>(
+    fn apply<S: BuildHasher, H: HashTable<K, V, S, Global>>(
         &self,
         table: &mut H,
     ) -> Option<V> {
         match self {
-            Self::Insert(key, value) => table.insert(*key, *value),
+            Self::Insert(key, value) => table.insert(*key, *value).expect("failed alloc"),
             Self::Get(key) => table.get(key).copied(),
             Self::Remove(key) => table.remove(key),
         }

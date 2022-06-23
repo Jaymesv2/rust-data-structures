@@ -23,8 +23,13 @@ dependencies = [
 name = "hash_table"
 version = "0.1.0"
 dependencies = [
+ "impls",
  "rand",
 ]
+
+[[package]]
+name = "impls"
+version = "0.1.0"
 
 [[package]]
 name = "libc"

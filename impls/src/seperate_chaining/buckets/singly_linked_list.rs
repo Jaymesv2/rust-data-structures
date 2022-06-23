@@ -106,7 +106,6 @@ where
 
 pub struct SLLBucketIter<'a, K, V, A: Allocator + Clone> {
     head: Option<ElementPtr<K, V>>,
-    //alloc: A,
     marker: PhantomData<(&'a SLLBucket<K, V, A>, A)>,
 }
 

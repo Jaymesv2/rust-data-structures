@@ -1,4 +1,11 @@
-#![feature(test, variant_count, iter_intersperse, generic_associated_types, generators, allocator_api)]
+#![feature(
+    test,
+    variant_count,
+    iter_intersperse,
+    generic_associated_types,
+    generators,
+    allocator_api
+)]
 
 // TODO: optimize the insert and grow functions
 #[cfg(test)]
@@ -6,62 +13,62 @@ mod tester;
 
 extern crate test;
 
-
 use std::{
-    hash::{BuildHasher, Hash},
-    fmt::Debug,
     alloc::{Allocator, Global},
-    marker::PhantomData, collections::hash_map::RandomState
+    collections::hash_map::RandomState,
+    fmt::Debug,
+    hash::{BuildHasher, Hash},
+    marker::PhantomData,
 };
-
-
 
 use impls::traits::*;
 
-pub type SCHashTable<K,V,S,A> = HashTable<K,V,S,A, impls::seperate_chaining::SLLHashTableImpl<K,V,S,A>>;
+pub type SCHashTable<K, V, S, A> =
+    HashTable<K, V, S, A, impls::seperate_chaining::SLLHashTableImpl<K, V, S, A>>;
 
-pub struct HashTable<K, V, S, A, T> 
+pub struct HashTable<K, V, S, A, T>
 where
-    K: Eq + Hash, 
+    K: Eq + Hash,
     S: BuildHasher,
     A: Allocator + Clone,
-    T: HashTableImpl<K,V,S,A>
+    T: HashTableImpl<K, V, S, A>,
 {
     inner: T,
-    marker: PhantomData<(K,V,S,A)>,
+    marker: PhantomData<(K, V, S, A)>,
 }
 
-impl<K,V,S,A,T> Debug for HashTable<K,V,S,A,T> 
+impl<K, V, S, A, T> Debug for HashTable<K, V, S, A, T>
 where
-    K: Eq + Hash, 
+    K: Eq + Hash,
     S: BuildHasher,
     A: Allocator + Clone,
-    T: HashTableImpl<K,V,S,A>
+    T: HashTableImpl<K, V, S, A>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "hashtable :(")
     }
 }
 
-impl<K,V,T> Default for HashTable<K,V,RandomState,Global,T>
+impl<K, V, T> Default for HashTable<K, V, RandomState, Global, T>
 where
-    K: Eq + Hash, 
-    T: HashTableImpl<K,V,RandomState,Global> + Default
+    K: Eq + Hash,
+    T: HashTableImpl<K, V, RandomState, Global> + Default,
 {
     fn default() -> Self {
-        Self { 
-            inner: T::with_capacity_and_hasher_in(0, RandomState::new(), Global).expect("failed to allocate"), 
-            marker: PhantomData
+        Self {
+            inner: T::with_capacity_and_hasher_in(0, RandomState::new(), Global)
+                .expect("failed to allocate"),
+            marker: PhantomData,
         }
     }
 }
 
-impl<K,V,S,A,T> impls::traits::HashTable<K,V,S,A> for HashTable<K,V,S,A,T>
+impl<K, V, S, A, T> impls::traits::HashTable<K, V, S, A> for HashTable<K, V, S, A, T>
 where
     K: Eq + Hash,
     S: BuildHasher,
     A: Allocator + Clone,
-    T: HashTableImpl<K,V,S,A>,
+    T: HashTableImpl<K, V, S, A>,
 {
     fn capacity(&self) -> usize {
         self.inner.capacity()
@@ -82,17 +89,20 @@ where
         Some(res)
     }
 
-    fn with_capacity_and_hasher_in(capacity: usize, hash_builder: S, allocator: A) -> Result<Self, core::alloc::AllocError> {
+    fn with_capacity_and_hasher_in(
+        capacity: usize,
+        hash_builder: S,
+        allocator: A,
+    ) -> Result<Self, core::alloc::AllocError> {
         let inner = T::with_capacity_and_hasher_in(capacity, hash_builder, allocator)?;
         Ok(Self {
             inner,
-            marker: PhantomData
+            marker: PhantomData,
         })
     }
 }
 
-
-/* 
+/*
 trait HashTable<K: Hash + Eq + Debug, V: Debug, S: BuildHasher + Default>: Default {
     fn new() -> Self {
         Self::with_capacity(0)
@@ -109,7 +119,7 @@ trait HashTable<K: Hash + Eq + Debug, V: Debug, S: BuildHasher + Default>: Defau
     fn get(&self, key: &K) -> Option<&V>;
     fn len(&self) -> usize;
 }*/
-/* 
+/*
 impl<K, V, S> HashTable<K, V, S> for std::collections::HashMap<K, V, S>
 where
     K: Hash + Eq + Debug,
@@ -149,7 +159,7 @@ where
     fn keys(&self) -> Self::Key;
     fn values(&self) -> Self::Value;
 }*/
-/* 
+/*
 impl<K, V, S> SCHashTableImpl<K, V, S> for SCHashTable<K, V, S>
 where
     K: Hash + Eq + Debug,

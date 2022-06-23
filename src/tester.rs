@@ -1,44 +1,40 @@
-use std::collections::HashMap;
-use std::fmt::Debug;
-use std::hash::{BuildHasher, Hash};
-use std::marker::PhantomData;
-use std::alloc::Global;
-use std::collections::hash_map::RandomState;
+use std::{
+    alloc::Global,
+    collections::{hash_map::RandomState, HashMap},
+    fmt::Debug,
+    hash::{BuildHasher, Hash},
+    marker::PhantomData,
+};
 
-use rand::distributions::{Distribution, Standard};
-use rand::SeedableRng;
-use rand::rngs::StdRng;
+use rand::{
+    distributions::{Distribution, Standard},
+    rngs::StdRng,
+    SeedableRng,
+};
 
-use impls::traits::HashTable;
 use crate::SCHashTable;
-
-
-//use impls::*;
-/* 
-unsafe fn randomstate_from_seed(seed: [u8;32]) -> RandomState {
-    
-    //RandomState
-}*/
+use impls::traits::HashTable;
 
 const MIN_KEYS: usize = 1;
 #[test]
 fn run_test() {
-    //let seed = Some([156, 193, 116, 26, 251, 136, 38, 106, 25, 11, 3, 103, 121, 63, 45, 216, 137, 198, 232, 43, 43, 113, 252, 174, 158, 83, 147, 231, 40, 230, 246, 215]);
     let seed = None;
-    //let seed = Some([106, 115, 125, 98, 35, 103, 155, 128, 225, 226, 14, 60, 5, 203, 73, 72, 97, 49, 214, 19, 115, 143, 170, 192, 81, 70, 103, 102, 196, 89, 69, 106]);
     #[cfg(miri)]
     let count = 10;
     #[cfg(not(miri))]
     let count = 1000;
     for _ in 0..count {
         //if let Err(report) = test_hashtable::<crate::HashTable<u8, i64, RandomState>, _, _, RandomState, StdRng>(seed, 4, Some(3)) {
-        if let Err(report) = test_hashtable::<SCHashTable<u8, i64, RandomState, Global>, _, _, RandomState, StdRng>(seed, 100, None) {
+        if let Err(report) =
+            test_hashtable::<SCHashTable<u8, i64, RandomState, Global>, _, _, RandomState, StdRng>(
+                seed, 100, None,
+            )
+        {
             println!("{:?}", report);
             report.playback();
             panic!("died");
         }
     }
-    
 }
 
 trait DeterministicHasher: BuildHasher {
@@ -47,21 +43,25 @@ trait DeterministicHasher: BuildHasher {
 }
 
 impl DeterministicHasher for RandomState {
-    type Seed = [u8;32];
+    type Seed = [u8; 32];
     // I'm trying to make the test_hashtable function deterministic but randomstate is annoying :/
     fn from_seed(seed: Self::Seed) -> Self {
         // RandomState is `RandomState {k1: u64, k2: u64}` so its equal size to (u64, u64). transmuting should be fine.
         unsafe {
-            use std::mem::{transmute, size_of};
+            use std::mem::{size_of, transmute};
             #[allow(dead_code)]
-            const SIZE_CHECK: u8 = (size_of::<(u64,u64)>() == size_of::<RandomState>()) as u8 -1;
-            let a: [u64;4] = transmute(seed);
-            transmute((a[0]^a[1], a[2]^a[3]))
+            const SIZE_CHECK: u8 = (size_of::<(u64, u64)>() == size_of::<RandomState>()) as u8 - 1;
+            let a: [u64; 4] = transmute(seed);
+            transmute((a[0] ^ a[1], a[2] ^ a[3]))
         }
     }
 }
 
-fn test_hashtable<H, K, V, S, R>(seed: Option<R::Seed>, ops: usize, starting_capacity: Option<usize>) -> Result<(), HashTableFailure<H, K, V, S, R>>
+fn test_hashtable<H, K, V, S, R>(
+    seed: Option<R::Seed>,
+    ops: usize,
+    starting_capacity: Option<usize>,
+) -> Result<(), HashTableFailure<H, K, V, S, R>>
 where
     H: HashTable<K, V, S, Global> + Debug,
     K: Hash + Eq + Copy + Eq + Debug,
@@ -76,15 +76,16 @@ where
     let seed: R::Seed = seed.unwrap_or_else(|| rand::thread_rng().gen());
     let starting_capacity = starting_capacity.unwrap_or(50);
     let hash_builder = S::from_seed(seed.clone());
-    let mut table = H::with_capacity_and_hasher_in(starting_capacity, hash_builder, Global).unwrap();
+    let mut table =
+        H::with_capacity_and_hasher_in(starting_capacity, hash_builder, Global).unwrap();
 
-    let mut gen: OperationGenerator<K,V,R> = OperationGenerator::from_seed(seed.clone());
+    let mut gen: OperationGenerator<K, V, R> = OperationGenerator::from_seed(seed.clone());
     let mut op_num = 0;
     for (op, res) in (&mut gen).take(ops) {
         op_num += 1;
         let r = op.apply(&mut table);
         if r != res {
-            let mut op_gen = OperationGenerator::<K,V,R>::from_seed(seed.clone());
+            let mut op_gen = OperationGenerator::<K, V, R>::from_seed(seed.clone());
             let operations: Vec<_> = (&mut op_gen).take(op_num).collect();
             return Err(HashTableFailure {
                 seed,
@@ -94,7 +95,7 @@ where
                 operations,
                 data: op_gen.data,
                 marker: PhantomData,
-            })
+            });
         }
     }
 
@@ -106,7 +107,7 @@ use std::iter::*;
 #[derive(Debug)]
 struct HashTableFailure<H, K, V, S, R>
 where
-    H: HashTable<K, V, S,Global> + Debug,
+    H: HashTable<K, V, S, Global> + Debug,
     S: BuildHasher,
     R: SeedableRng + Rng,
     R::Seed: Clone,
@@ -138,23 +139,30 @@ where
 {
     fn playback(&self) {
         println!("running playback");
-        let mut table = H::with_capacity_and_hasher_in(self.starting_capacity, S::from_seed(self.seed.clone()), Global).expect("failed alloc");
+        let mut table = H::with_capacity_and_hasher_in(
+            self.starting_capacity,
+            S::from_seed(self.seed.clone()),
+            Global,
+        )
+        .expect("failed alloc");
 
-        let mut gen: OperationGenerator<K,V,R> = OperationGenerator::from_seed(self.seed.clone());
+        let mut gen: OperationGenerator<K, V, R> = OperationGenerator::from_seed(self.seed.clone());
         let lower = self.op_num.saturating_sub(5);
         for _ in 0..lower {
             let (op, r) = gen.next().unwrap();
             assert_eq!(r, op.apply(&mut table));
         }
 
-        for (ind, (op, re)) in gen.enumerate().take(std::cmp::min(lower+5, self.op_num)+1) {
+        for (ind, (op, re)) in gen
+            .enumerate()
+            .take(std::cmp::min(lower + 5, self.op_num) + 1)
+        {
             let r = op.apply(&mut table);
-            println!("--------- operation {} ----------", (lower)+ind);
+            println!("--------- operation {} ----------", (lower) + ind);
             println!("operation: {:?}", op);
             println!("table_state: {:?}", &self.table);
-            println!("expected / actual : {:?}, {:?}", re,r);
+            println!("expected / actual : {:?}, {:?}", re, r);
         }
-        
     }
 }
 
@@ -178,8 +186,7 @@ where
     }
 }
 
-
-impl<K, V, R> Iterator for OperationGenerator<K, V,R>
+impl<K, V, R> Iterator for OperationGenerator<K, V, R>
 where
     K: Copy + Hash + Eq,
     V: Copy,
@@ -243,10 +250,7 @@ where
     K: Hash + Eq + Copy + Eq + Debug,
     V: Copy + Eq + Debug,
 {
-    fn apply<S: BuildHasher, H: HashTable<K, V, S, Global>>(
-        &self,
-        table: &mut H,
-    ) -> Option<V> {
+    fn apply<S: BuildHasher, H: HashTable<K, V, S, Global>>(&self, table: &mut H) -> Option<V> {
         match self {
             Self::Insert(key, value) => table.insert(*key, *value).expect("failed alloc"),
             Self::Get(key) => table.get(key).copied(),

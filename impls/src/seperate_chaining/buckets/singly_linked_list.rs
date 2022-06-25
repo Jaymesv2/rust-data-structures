@@ -1,6 +1,8 @@
 use super::super::*;
 use core::ptr;
 
+use traits::hash_table::seperate_chaining::bucket::*;
+
 pub type ElementPtr<K, V> = NonNull<SinglyLinkedListNode<K, V>>;
 
 pub struct SLLBucket<K, V, A: Allocator + Clone> {
@@ -8,7 +10,7 @@ pub struct SLLBucket<K, V, A: Allocator + Clone> {
     alloc: A,
 }
 
-impl<K, V, A> super::Bucket<K, V, A> for SLLBucket<K, V, A>
+impl<K, V, A> Bucket<K, V, A> for SLLBucket<K, V, A>
 where
     K: Eq + Hash,
     A: Allocator + Clone,
@@ -73,7 +75,7 @@ impl<K, V, A: Allocator + Clone> Drop for SLLBucket<K, V, A> {
     }
 }
 
-impl<'a, K, V, A> super::BucketIter<'a, K, V, A> for SLLBucket<K, V, A>
+impl<'a, K, V, A> BucketIter<'a, K, V, A> for SLLBucket<K, V, A>
 where
     K: Eq + Hash + 'a,
     V: 'a,
@@ -88,7 +90,7 @@ where
     }
 }
 
-impl<'a, K, V, A> super::BucketDrain<'a, K, V, A> for SLLBucket<K, V, A>
+impl<'a, K, V, A> BucketDrain<'a, K, V, A> for SLLBucket<K, V, A>
 where
     Self: 'a,
     K: Eq + Hash,

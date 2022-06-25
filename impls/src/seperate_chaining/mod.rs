@@ -9,13 +9,15 @@ use core::{
 type ElementsPtr<K, V, A> = NonNull<SLLBucket<K, V, A>>;
 
 mod buckets;
-use buckets::*;
+pub use buckets::*;
 
-use crate::*;
+use traits::hash_table::*;
+use traits::hash_table::seperate_chaining::bucket::*;
 
 pub type SLLHashTableImpl<K, V, S, A> = SCHashTableImpl<K, V, S, SLLBucket<K, V, A>, A>;
 
 const DEFAULT_SIZE: usize = 50;
+
 #[allow(dead_code)]
 
 /// This hashtable uses singly linked lists for its elements

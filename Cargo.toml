@@ -1,5 +1,5 @@
 [workspace]
-members = ["impls"]
+members = ["impls", "linked_lists", "traits"]
 
 [package]
 name = "hash_table"
@@ -10,6 +10,7 @@ edition = "2021"
 
 [dependencies]
 impls = {path = "impls"}
+traits = {path = "traits"}
 
 [dev-dependencies]
 rand = "0.8.5"

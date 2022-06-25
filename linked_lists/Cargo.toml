@@ -1,5 +1,5 @@
 [package]
-name = "impls"
+name = "linked_lists"
 version = "0.1.0"
 edition = "2021"
 
@@ -9,4 +9,4 @@ edition = "2021"
 
 [dependencies]
 traits = {path = "../traits"}
-linked_lists = {path = "../linked_lists"}
+

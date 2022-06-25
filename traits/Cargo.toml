@@ -1,5 +1,5 @@
 [package]
-name = "impls"
+name = "traits"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,5 +8,3 @@ edition = "2021"
 [lib]
 
 [dependencies]
-traits = {path = "../traits"}
-linked_lists = {path = "../linked_lists"}

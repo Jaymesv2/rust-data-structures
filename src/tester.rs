@@ -13,7 +13,7 @@ use rand::{
 };
 
 use crate::SCHashTable;
-use impls::HashTable;
+use traits::hash_table::HashTable;
 
 const MIN_KEYS: usize = 1;
 #[test]
@@ -64,7 +64,7 @@ fn test_hashtable<H, K, V, S, R>(
 ) -> Result<(), HashTableFailure<H, K, V, S, R>>
 where
     H: HashTable<K, V, S, Global> + Debug,
-    K: Hash + Eq + Copy + Eq + Debug,
+    K: Hash + Eq + Copy + Debug,
     V: Copy + Eq + Debug,
     S: BuildHasher + DeterministicHasher<Seed = R::Seed>,
     R: SeedableRng + Rng,

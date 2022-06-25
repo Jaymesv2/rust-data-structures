@@ -6,8 +6,3 @@ extern crate test;
 
 //extern crate alloc;
 pub mod seperate_chaining;
-
-use core::{
-    alloc::{AllocError, Allocator},
-    hash::{BuildHasher, Hash},
-};

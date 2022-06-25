@@ -11,8 +11,8 @@ type ElementsPtr<K, V, A> = NonNull<SLLBucket<K, V, A>>;
 mod buckets;
 pub use buckets::*;
 
-use traits::hash_table::*;
 use traits::hash_table::seperate_chaining::bucket::*;
+use traits::hash_table::*;
 
 pub type SLLHashTableImpl<K, V, S, A> = SCHashTableImpl<K, V, S, SLLBucket<K, V, A>, A>;
 

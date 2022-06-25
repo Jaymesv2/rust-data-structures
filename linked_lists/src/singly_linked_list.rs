@@ -35,9 +35,9 @@ impl<T> SinglyLinkedList<T> {
     pub fn last(&self) -> Option<&T> {
         self.iter().last()
     }
-    
+
     pub fn contains<Q: PartialEq<T>>(&self, item: &Q) -> bool {
-        self.iter().find(|s| item.eq(s)).is_some()
+        self.iter().any(|s| item.eq(s))
     }
 }
 
@@ -67,7 +67,10 @@ impl<T, A: Allocator + Clone> SinglyLinkedList<T, A> {
     }
 
     /// Find by will only return Some if the inner mutable reference also returns None
-    fn find_ref_mut_by<F: Fn(&T) -> bool>(&mut self, f: F) -> Option<&mut Option<Box<SinglyLinkedListNode<T, A>, A>>> {
+    fn find_ref_mut_by<F: Fn(&T) -> bool>(
+        &mut self,
+        f: F,
+    ) -> Option<&mut Option<Box<SinglyLinkedListNode<T, A>, A>>> {
         let mut current = &mut self.head;
         loop {
             match current {
@@ -82,7 +85,10 @@ impl<T, A: Allocator + Clone> SinglyLinkedList<T, A> {
     }
 
     /// Find by will only return Some if the inner mutable reference also returns None
-    fn find_ref_by<F: Fn(&T) -> bool>(&self, f: F) -> Option<&Option<Box<SinglyLinkedListNode<T, A>, A>>> {
+    fn find_ref_by<F: Fn(&T) -> bool>(
+        &self,
+        f: F,
+    ) -> Option<&Option<Box<SinglyLinkedListNode<T, A>, A>>> {
         let mut current = &self.head;
         loop {
             match current {
@@ -127,11 +133,11 @@ impl<T, A: Allocator + Clone> SinglyLinkedList<T, A> {
         }
     }
 
-    pub fn iter<'a>(&'a self) -> Iter<'a, T, A> {
+    pub fn iter(&self) -> Iter<'_, T, A> {
         Iter { node: &self.head }
     }
 
-    pub fn drain<'a>(&'a mut self) -> Drain<'a, T, A> {
+    pub fn drain(&mut self) -> Drain<'_, T, A> {
         let item = self.head.take();
         Drain {
             head_ref: &mut self.head,
@@ -139,7 +145,7 @@ impl<T, A: Allocator + Clone> SinglyLinkedList<T, A> {
         }
     }
 
-    pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T, A> {
+    pub fn iter_mut(&mut self) -> IterMut<'_, T, A> {
         IterMut {
             node: Some(&mut self.head),
         }
@@ -272,7 +278,7 @@ mod iters {
     }
 }
 
-impl<T,A: Allocator + Clone> Extend<T> for SinglyLinkedList<T,A> {
+impl<T, A: Allocator + Clone> Extend<T> for SinglyLinkedList<T, A> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         for i in iter.into_iter() {
             self.try_push(i).expect("failed to allocate");
@@ -280,20 +286,20 @@ impl<T,A: Allocator + Clone> Extend<T> for SinglyLinkedList<T,A> {
     }
 }
 
-impl<K: Eq,V,A: Allocator + Clone> Bucket<K,V,A> for SinglyLinkedList<(K,V),A> {
+impl<K: Eq, V, A: Allocator + Clone> Bucket<K, V, A> for SinglyLinkedList<(K, V), A> {
     fn new_in(alloc: A) -> Self {
         Self::new_in(alloc)
     }
     fn get(&self, key: &K) -> Option<&V> {
-        self.get_by(|(k,v)| key == k).map(|(_,v)| v)
+        self.get_by(|(k, _)| key == k).map(|(_, v)| v)
     }
     fn insert(&mut self, key: K, mut value: V) -> Result<Option<(K, V)>, AllocError> {
         // if the value exists then swap it, else push it to the front
-        if let Some((_,v)) = self.iter_mut().find(|(k,v)| k == &key) {
+        if let Some((_, v)) = self.iter_mut().find(|(k, _)| k == &key) {
             core::mem::swap(v, &mut value);
-            Ok(Some((key,value)))
+            Ok(Some((key, value)))
         } else {
-            self.try_push((key,value))?;
+            self.try_push((key, value))?;
             Ok(None)
         }
     }
@@ -301,11 +307,11 @@ impl<K: Eq,V,A: Allocator + Clone> Bucket<K,V,A> for SinglyLinkedList<(K,V),A> {
         self.iter().count() == 0
     }
     fn remove(&mut self, key: &K) -> Option<(K, V)> {
-        self.remove_by(|(k,_)| k == key)
+        self.remove_by(|(k, _)| k == key)
     }
 }
 
-/* 
+/*
 impl<'a,K,V,A> BucketIter<'a, K, V, A> for SinglyLinkedList<(K,V), A>
 where
     K: Eq + Hash + 'a,
@@ -329,13 +335,13 @@ where
     fn iter_mut(&mut self) -> Self::IterMut;
 }*/
 
-impl<'a,K,V,A> BucketDrain<'a, K, V, A> for SinglyLinkedList<(K,V), A>
+impl<'a, K, V, A> BucketDrain<'a, K, V, A> for SinglyLinkedList<(K, V), A>
 where
     Self: 'a,
     K: Eq,
     A: Allocator + Clone,
 {
-    type DrainIter = iters::Drain<'a, (K,V), A>;
+    type DrainIter = iters::Drain<'a, (K, V), A>;
     fn drain(&'a mut self) -> Self::DrainIter {
         self.drain()
     }
@@ -369,7 +375,7 @@ mod tests {
             (0..1000).collect::<SinglyLinkedList<i32, Global>>();
 
         b.iter(|| {
-            let c = lst.clone();
+            let _c = lst.clone();
         });
     }
 

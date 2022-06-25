@@ -15,7 +15,7 @@ extern crate test;
 
 use std::{
     alloc::{Allocator, Global},
-    collections::hash_map::{RandomState},
+    collections::hash_map::RandomState,
     fmt::Debug,
     hash::{BuildHasher, Hash},
     marker::PhantomData,
@@ -23,7 +23,7 @@ use std::{
 
 use traits::hash_table::*;
 
-pub type SCHashTable<K, V, S=RandomState, A=Global> =
+pub type SCHashTable<K, V, S = RandomState, A = Global> =
     HashTable<K, V, S, A, impls::seperate_chaining::SLLHashTableImpl<K, V, S, A>>;
 
 pub struct HashTable<K, V, S, A, T>

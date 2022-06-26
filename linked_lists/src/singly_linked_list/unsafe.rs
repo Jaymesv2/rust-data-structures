@@ -1,5 +1,9 @@
-use super::super::*;
-use core::ptr;
+use core::{
+    ptr::{self, NonNull, drop_in_place},
+    hash::Hash,
+    marker::PhantomData,
+    alloc::{AllocError, Allocator, Layout}
+};
 
 use traits::hash_table::seperate_chaining::bucket::*;
 

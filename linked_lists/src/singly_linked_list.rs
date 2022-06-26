@@ -10,6 +10,8 @@ use core::{
 
 use traits::hash_table::seperate_chaining::bucket::*;
 
+mod r#unsafe;
+
 #[derive(Clone, PartialEq, Eq)]
 pub struct SinglyLinkedList<T, A: Allocator + Clone = alloc::alloc::Global> {
     head: Option<Box<SinglyLinkedListNode<T, A>, A>>,

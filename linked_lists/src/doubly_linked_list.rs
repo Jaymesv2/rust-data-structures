@@ -29,7 +29,7 @@ impl<T> DoublyLinkedList<T> {
 
 impl<T,A: Allocator + Clone> DoublyLinkedList<T,A> {
     pub fn new_in(alloc: A) -> Self {
-        Self { head: None, tail: None, alloc ,len: 0}
+        Self { head: None, tail: None, alloc, len: 0}
     }
 
     pub fn push_front(&mut self, item: T) -> Result<(), AllocError> {

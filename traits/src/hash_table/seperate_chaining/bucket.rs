@@ -10,6 +10,8 @@ where
 {
     fn new_in(alloc: A) -> Self;
     fn insert(&mut self, key: K, value: V) -> Result<Option<(K, V)>, AllocError>;
+    unsafe fn insert_unchecked(&mut self, key: K, value: V) -> Result<(), AllocError>;
+    fn clear(&mut self);
     fn is_empty(&self) -> bool;
     fn get(&self, key: &K) -> Option<&V>;
     fn remove(&mut self, key: &K) -> Option<(K, V)>;

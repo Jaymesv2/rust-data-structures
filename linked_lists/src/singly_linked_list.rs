@@ -305,6 +305,12 @@ impl<K: Eq, V, A: Allocator + Clone> Bucket<K, V, A> for SinglyLinkedList<(K, V)
             Ok(None)
         }
     }
+    unsafe fn insert_unchecked(&mut self, key: K, value: V) -> Result<(), AllocError> {
+        self.try_push((key,value))
+    }
+    fn clear(&mut self) {
+        self.head = None;
+    }
     fn is_empty(&self) -> bool {
         self.iter().count() == 0
     }

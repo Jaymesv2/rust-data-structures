@@ -18,6 +18,7 @@ pub trait HashTable<K, V, S: BuildHasher, A: Allocator + Clone>: Sized {
     fn remove(&mut self, key: &K) -> Option<V>;
     fn get(&self, key: &K) -> Option<&V>;
     fn len(&self) -> usize;
+    fn clear(&mut self);
     fn is_empty(&self) -> bool {
         self.len() == 0
     }
@@ -32,6 +33,7 @@ pub trait HashTableImpl<K: Eq + Hash, V, S: BuildHasher, A: Allocator>: Sized {
         allocator: A,
     ) -> Result<Self, AllocError>;
     fn grow(&mut self) -> Result<(), AllocError>;
+    fn clear(&mut self);
     /// # Safety
     /// This method does not do bounds checks.
     //#[deprecated]

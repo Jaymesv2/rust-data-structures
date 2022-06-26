@@ -61,6 +61,15 @@ where
             marker: PhantomData,
         })
     }
+    
+    fn clear(&mut self) {
+        for bucket in unsafe {slice::from_raw_parts_mut(self.ptr.as_ptr(), self.len())} {
+            bucket.clear();
+        }
+        
+        self.len = 0;
+    }
+
     fn grow(&mut self) -> Result<(), AllocError> {
         let new_capacity = if self.capacity == 0 {
             DEFAULT_SIZE

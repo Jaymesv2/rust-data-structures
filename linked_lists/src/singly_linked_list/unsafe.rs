@@ -37,6 +37,13 @@ where
         })
     }
 
+    unsafe fn insert_unchecked(&mut self, key: K, value: V) -> Result<(), AllocError> {
+        let mut node = SinglyLinkedListNode::ptr_to_new(key, value, self.alloc.clone())?;
+        node.as_mut().next = self.head;
+        self.head = Some(node);
+        Ok(())
+    }
+
     fn remove(&mut self, key: &K) -> Option<(K, V)> {
         let mut ptr = None;
         unsafe {
@@ -58,6 +65,18 @@ where
             }
         };
         ptr.map(|c| unsafe { SinglyLinkedListNode::into_tuple(c, self.alloc.clone()) })
+    }
+
+    fn clear(&mut self) {
+        let mut head: Option<ElementPtr<K, V>> = self.head;
+        while let Some(ptr) = head {
+            head = unsafe { ptr.as_ref().next };
+            unsafe {
+                core::ptr::drop_in_place(ptr.as_ptr());
+                self.alloc.deallocate(ptr.cast(), Layout::new::<Self>())
+            }
+        }
+        self.head = None;
     }
 
     fn is_empty(&self) -> bool {

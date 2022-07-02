@@ -1,5 +1,5 @@
 [workspace]
-members = ["impls", "linked_lists", "traits"]
+members = ["impls", "linked_lists", "traits", "queue"]
 
 [package]
 name = "hash_table"

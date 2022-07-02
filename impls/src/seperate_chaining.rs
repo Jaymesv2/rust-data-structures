@@ -61,7 +61,7 @@ where
             marker: PhantomData,
         })
     }
-    
+
     fn clear(&mut self) {
         for bucket in unsafe {slice::from_raw_parts_mut(self.ptr.as_ptr(), self.len())} {
             bucket.clear();
@@ -86,10 +86,11 @@ where
         // move elements from old area to new area and dealloc old area
         if old_capacity != 0 {
             unsafe {
+                let new_arr  = slice::from_raw_parts_mut(self.ptr.as_ptr(), self.len());
                 for bucket in slice::from_raw_parts_mut(old_ptr.as_ptr(), old_capacity) {
                     if !bucket.is_empty() {
                         for (k, v) in bucket.drain() {
-                            self.insert_unchecked(k, v)?;
+                            new_arr.get_unchecked_mut(self.key_index(&k)).insert_unchecked(k, v)?;
                         }
                     }
                 }
@@ -152,7 +153,6 @@ where
     fn len(&self) -> usize {
         self.len
     }
-    //fn set_capacity(&mut self) -> usize;
 }
 
 #[allow(dead_code)]

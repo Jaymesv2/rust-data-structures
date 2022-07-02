@@ -1,5 +1,6 @@
 #![no_std]
 #![feature(generic_associated_types, allocator_api, const_option, let_chains)]
+#![warn(unsafe_code)]
 
 extern crate alloc;
 use alloc::{alloc::Global, string::String, vec::Vec};
@@ -94,18 +95,7 @@ impl<T, A: Allocator> ArrayQueue<T, A> {
             ptr::copy_nonoverlapping(snd.as_ptr(), new_ptr.as_ptr().add(fst.len()), snd.len());
         }
     }
-
-    pub fn reserve(&mut self, count: usize) -> Result<(), AllocError> {
-        if count != 0 && self.len+count > self.capacity && let Some(new_cap) = NonZeroUsize::new(count+self.len)  {
-            self.grow_to(new_cap)?;
-        }
-        Ok(())
-    }
-
-    pub fn make_contiguous(&mut self) -> &mut [T] {
-        todo!()
-    }
-
+    
     pub fn shrink_to(&mut self, size: usize) -> Result<(), AllocError> {
         let _ = self.make_contiguous();
         let size = core::cmp::max(size, self.len);
@@ -118,18 +108,7 @@ impl<T, A: Allocator> ArrayQueue<T, A> {
         }
         Ok(())
     }
-
-    pub fn shrink_to_fit(&mut self) -> Result<(), AllocError> {
-        self.shrink_to(self.len)
-    }
-
-    pub fn truncate(&mut self, size: usize) {
-        if size < self.len {
-            let num_to_drop = size - self.len;
-            self.drain().rev().take(num_to_drop).for_each(|f| drop(f));
-        }
-    }
-
+    
     /// new_capacity must be greater than or equal to the current capacity
     fn grow_to(&mut self, new_capacity: NonZeroUsize) -> Result<(), AllocError> {
         let layout = Layout::array::<T>(new_capacity.get()).expect("failed to create layout");
@@ -148,6 +127,103 @@ impl<T, A: Allocator> ArrayQueue<T, A> {
         self.ptr = new_ptr;
         Ok(())
     }
+    /// add to the back of the queue
+    pub fn push_back(&mut self, item: T) -> Result<(), AllocError> {
+        if self.len + 1 > self.capacity {
+            self.grow()?;
+        }
+        unsafe { 
+            let push_ptr = self.ptr.as_ptr().add((self.start + self.len) % self.capacity);
+            ptr::write(push_ptr, item);
+        }
+        self.len += 1;
+        Ok(())
+    }
+
+    pub fn push_front(&mut self, item: T) -> Result<(), AllocError> {
+        if self.len + 1 > self.capacity {
+            self.grow()?;
+        }
+        self.start = self.start.checked_sub(1).unwrap_or(self.capacity - 1);
+        unsafe {
+            let push_ptr =  self.ptr.as_ptr().add(self.start);
+            ptr::write(push_ptr, item);
+        };
+        self.len += 1;
+        Ok(())
+    }
+
+    pub fn pop_back(&mut self) -> Option<T> {
+        (self.len != 0).then(|| {
+            self.len -= 1;
+            unsafe {
+                ptr::read::<T>(self.ptr.as_ptr().add((self.start + self.len) % self.capacity))
+            }
+        })
+    }
+
+    pub fn clear(&mut self) {
+        self.iter_mut().for_each(|ptr| unsafe {
+            drop_in_place(ptr as *mut T);
+        });
+        self.len = 0;
+        self.start = 0;
+    }
+
+    // remove from the front
+    pub fn pop_front(&mut self) -> Option<T> {
+        (self.len != 0).then(|| {
+            let item = unsafe { ptr::read(self.ptr.as_ptr().add(self.start)) };
+            self.start = (self.start + 1) % (self.capacity);
+            self.len -= 1;
+            item
+        })
+    }
+
+    pub fn get(&self, index: usize) -> Option<&T> {
+        (index <= self.len).then(|| unsafe {self.get_unchecked(index)})
+    }
+
+    pub unsafe fn get_unchecked(&self, index: usize) -> &T {
+        &*self.ptr.as_ptr().add((self.start + index) % self.capacity)
+        
+    }
+
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
+        (index <= self.len).then(|| unsafe {
+            self.get_unchecked_mut(index)
+        })
+    }
+
+    pub unsafe fn get_unchecked_mut(&mut self, index: usize) -> &mut T {
+        &mut *self.ptr.as_ptr().add((self.start + index) % self.capacity)
+    }
+
+    pub fn reserve(&mut self, count: usize) -> Result<(), AllocError> {
+        if count != 0 && self.len+count > self.capacity && let Some(new_cap) = NonZeroUsize::new(count+self.len)  {
+            self.grow_to(new_cap)?;
+        }
+        Ok(())
+    }
+
+    pub fn make_contiguous(&mut self) -> &mut [T] {
+        todo!()
+    }
+
+    
+
+    pub fn shrink_to_fit(&mut self) -> Result<(), AllocError> {
+        self.shrink_to(self.len)
+    }
+
+    pub fn truncate(&mut self, size: usize) {
+        if size < self.len {
+            let num_to_drop = size - self.len;
+            self.drain().rev().take(num_to_drop).for_each(|f| drop(f));
+        }
+    }
+
+    
 
     fn grow(&mut self) -> Result<(), AllocError> {
         let new_capacity = NonZeroUsize::new(self.capacity).unwrap_or(DEFAULT_SIZE);
@@ -172,62 +248,6 @@ impl<T, A: Allocator> ArrayQueue<T, A> {
                 pos += 1;
                 a
             })
-        })
-    }
-    /// add to the back of the queue
-    pub fn push_back(&mut self, item: T) -> Result<(), AllocError> {
-        if self.len + 1 > self.capacity {
-            self.grow()?;
-        }
-        let push_ptr = {
-            let index = (self.start + self.len) % (self.capacity);
-            unsafe { self.ptr.as_ptr().add(index) }
-        };
-        unsafe { ptr::write(push_ptr, item) };
-        self.len += 1;
-        Ok(())
-    }
-
-    pub fn push_front(&mut self, item: T) -> Result<(), AllocError> {
-        if self.len + 1 > self.capacity {
-            self.grow()?;
-        }
-        self.start = self.start.checked_sub(1).unwrap_or(self.capacity - 1);
-        let push_ptr = unsafe { self.ptr.as_ptr().add(self.start) };
-        self.len += 1;
-        unsafe { ptr::write(push_ptr, item) };
-        Ok(())
-    }
-
-    pub fn pop_back(&mut self) -> Option<T> {
-        (self.len != 0).then(|| {
-            self.len -= 1;
-            unsafe {
-                let ind = (self.start + self.len) % (self.capacity);
-                ptr::read::<T>(self.ptr.as_ptr().add(ind))
-            }
-        })
-    }
-
-    // remove from the front
-    pub fn pop_front(&mut self) -> Option<T> {
-        (self.len != 0).then(|| {
-            let item = unsafe { ptr::read(self.ptr.as_ptr().add(self.start)) };
-            self.start = (self.start + 1) % (self.capacity);
-            self.len -= 1;
-            item
-        })
-    }
-
-    pub fn get(&self, index: usize) -> Option<&T> {
-        (index <= self.len).then(|| unsafe {
-            &*self.ptr.as_ptr().add((self.start + index) % (self.capacity))
-        })
-    }
-
-    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
-        (index <= self.len).then(|| unsafe {
-            &mut *self.ptr.as_ptr().add((self.start + index) % (self.capacity))
         })
     }
 
@@ -260,15 +280,6 @@ impl<T, A: Allocator> ArrayQueue<T, A> {
 
     pub fn back_mut(&mut self) -> Option<&mut T> {
         self.get_mut(self.len())
-    }
-
-
-    pub fn clear(&mut self) {
-        self.iter_mut().for_each(|ptr| unsafe {
-            drop_in_place(ptr as *mut T);
-        });
-        self.len = 0;
-        self.start = 0;
     }
 
     pub fn len(&self) -> usize {
@@ -440,7 +451,7 @@ mod iters {
                 let ptr = unsafe { self.inner.ptr.as_ptr().add(self.current_ind) };
                 self.current_ind = (self.current_ind + 1) % (self.inner.capacity);
                 self.remaining -= 1;
-                unsafe { &*ptr }
+                unsafe { &*ptr }    
             })
         }
 
@@ -453,10 +464,8 @@ mod iters {
         fn next_back(&mut self) -> Option<Self::Item> {
             (self.remaining != 0).then(|| {
                 self.remaining -= 1;
-                unsafe {
-                    let ind = (self.current_ind + self.remaining) % (self.inner.capacity);
-                    &*self.inner.ptr.as_ptr().add(ind)
-                }
+                let ind = (self.current_ind + self.remaining) % (self.inner.capacity);
+                unsafe {&*self.inner.ptr.as_ptr().add(ind)}
             })
         }
     }
@@ -560,7 +569,7 @@ mod iters {
             (self.len != 0).then(|| {
                 self.len -= 1;
                 unsafe {
-                    let ind = (self.start + self.len) % (self.inner.capacity);
+                    let ind = (self.start + self.len) % self.inner.capacity;
                     ptr::read(self.inner.ptr.as_ptr().add(ind))
                 }
             })
@@ -757,7 +766,7 @@ mod tests {
         assert!(snd.is_empty());
         assert_eq!(fst, &v)
     }
-    
+
     #[test]
     fn slices2() {
         let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(25);

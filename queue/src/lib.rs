@@ -53,10 +53,12 @@ impl<T, A: Allocator> ArrayQueue<T, A> {
     }
 
     pub fn as_slices(&self) -> (&[T], &[T]) {
+        /*
         // if the current capacity is zero then do nothing
         if self.capacity == 0 || self.len == 0 {
             return (&[], &[]);
-        }
+        }*/
+        // i'm still not sure if this is right. it passes all the tests but i feel like there are edge cases where it wont work
         let len1 = self.capacity - self.start;
         unsafe {
             (
@@ -66,11 +68,7 @@ impl<T, A: Allocator> ArrayQueue<T, A> {
         }
     }
 
-    pub fn as_slices_mut(&self) -> (&mut [T], &mut [T]) {
-        // if the current capacity is zero then do nothing
-        if self.capacity == 0 || self.len == 0 {
-            return (&mut [], &mut []);
-        }
+    pub fn as_slices_mut(&mut self) -> (&mut [T], &mut [T]) {
         let len1 = self.capacity - self.start;
         unsafe {
             (
@@ -759,6 +757,7 @@ mod tests {
         assert!(snd.is_empty());
         assert_eq!(fst, &v)
     }
+    
     #[test]
     fn slices2() {
         let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(25);
@@ -768,6 +767,18 @@ mod tests {
         let (fst, snd) = queue.as_slices();
         let v1 = (10..25).collect::<Vec<_>>();
         let v2 = (25..35).collect::<Vec<_>>();
+        assert_eq!(fst, &v1);
+        assert_eq!(snd, &v2);
+    }
+    #[test]
+    fn slices3() {
+        let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(25);
+        queue.extend(0..25);
+        queue.drain().take(15).for_each(drop);
+        queue.extend(25..30);
+        let (fst, snd) = queue.as_slices();
+        let v1 = (15..25).collect::<Vec<_>>();
+        let v2 = (25..30).collect::<Vec<_>>();
         assert_eq!(fst, &v1);
         assert_eq!(snd, &v2);
     }

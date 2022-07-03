@@ -24,7 +24,7 @@ where
     }
 
     fn get<'a>(&'a self, key: &K) -> Option<&'a V> {
-        self.iter().find(|elem| elem.0 == key).map(|(_, v)| v)
+        self.iter().find(|elem| &elem.0 == key).map(|(_, v)| v)
     }
 
     fn insert(&mut self, key: K, value: V) -> Result<Option<(K, V)>, AllocError> {
@@ -134,13 +134,12 @@ pub struct SLLBucketIter<'a, K, V, A: Allocator + Clone> {
 }
 
 impl<'a, K: 'a, V: 'a, A: Allocator + Clone> Iterator for SLLBucketIter<'a, K, V, A> {
-    type Item = (&'a K, &'a V);
+    type Item = &'a (K, V);
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(s) = self.head {
             unsafe {
                 self.head = s.as_ref().next;
-                let r = s.as_ref();
-                Some((&r.val.0, &r.val.1))
+                Some(&s.as_ref().val)
             }
         } else {
             None

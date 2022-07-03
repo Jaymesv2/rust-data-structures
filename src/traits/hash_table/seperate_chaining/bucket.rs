@@ -23,7 +23,7 @@ where
     V: 'a,
     A: Allocator + Clone,
 {
-    type Iter: 'a + Iterator<Item = (&'a K, &'a V)>;
+    type Iter: 'a + Iterator<Item = &'a (K, V)>;
     fn iter(&'a self) -> Self::Iter;
 }
 
@@ -34,7 +34,7 @@ where
     K: Eq + Hash + 'a,
     A: Allocator + Clone + 'a,
 {
-    type IterMut: Iterator<Item = (&'a mut K, &'a mut V)>;
+    type IterMut: Iterator<Item = &'a mut (K, V)>;
     fn iter_mut(&mut self) -> Self::IterMut;
 }
 

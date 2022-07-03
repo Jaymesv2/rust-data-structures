@@ -1,5 +1,7 @@
 #![cfg_attr(not(test), no_std)]
-#![feature(generic_associated_types, allocator_api, const_option, let_chains)]
+#![feature(generic_associated_types, allocator_api, const_option, let_chains, test)]
+#[cfg(test)]
+extern crate test;
 //#![warn(unsafe_code)]
 
 extern crate alloc;
@@ -692,6 +694,23 @@ mod iters {
     }
 
     impl<'a, T: 'a, A: Allocator> FusedIterator for IntoIter<T, A> {}
+}
+
+#[cfg(test)]
+mod bench {
+    use super::*;
+    use test::Bencher;
+
+    #[bench]
+    fn create_insert_100_bench(b: &mut Bencher) {
+        
+        b.iter(|| {
+            let mut a = ArrayQueue::new();
+            for i in 0..100 {
+                a.push_back(i).expect("alloc failed");
+            }
+        });
+    }
 }
 
 #[cfg(test)]

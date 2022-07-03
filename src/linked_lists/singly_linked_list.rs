@@ -371,8 +371,9 @@ impl<T: Display, A: Allocator + Clone> Display for SinglyLinkedListNode<T, A> {
         self.value.fmt(f)
     }
 }
-#[cfg(test)]
-mod tests {
+
+#[cfg(all(test, not(miri)))]
+mod bench {
     use super::SinglyLinkedList;
     use alloc::alloc::Global;
     use test::Bencher;
@@ -386,7 +387,13 @@ mod tests {
             let _c = lst.clone();
         });
     }
+}
 
+#[cfg(test)]
+mod tests {
+    use super::SinglyLinkedList;
+    use alloc::alloc::Global;
+    
     #[test]
     fn new_and_insert() {
         let mut a = SinglyLinkedList::new();

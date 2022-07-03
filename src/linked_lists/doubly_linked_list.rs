@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use alloc::alloc::Global;
 use core::{
     alloc::{AllocError, Allocator, Layout},
@@ -37,7 +38,7 @@ impl<T, A: Allocator + Clone> DoublyLinkedList<T, A> {
         }
     }
 
-    pub fn push_front(&mut self, item: T) -> Result<(), AllocError> {
+    pub fn push_front(&mut self, _item: T) -> Result<(), AllocError> {
         todo!()
     }
 
@@ -45,7 +46,7 @@ impl<T, A: Allocator + Clone> DoublyLinkedList<T, A> {
         todo!()
     }
 
-    pub fn push_back(&mut self, item: T) -> Result<(), AllocError> {
+    pub fn push_back(&mut self, _item: T) -> Result<(), AllocError> {
         todo!()
     }
 

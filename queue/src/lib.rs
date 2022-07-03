@@ -264,7 +264,22 @@ where
     }
 
     pub fn make_contiguous(&mut self) -> &mut [T] {
-        todo!()
+        // 2 slices
+        if self.start + self.len > self.capacity {
+            todo!()
+            /*let end = (self.start+self.len())%self.capacity;
+            let snd_len = self.len - end;
+
+            unsafe {ptr::copy(self.ptr.as_ptr().add(self.start), self.ptr.as_ptr().add(end), snd_len)};
+
+            for i in 0..snd_len {
+                unsafe{ptr::swap(self.ptr.as_ptr().add(i), self.ptr.as_ptr().add(i+snd_len))}
+            }*/
+        } else {
+            unsafe {ptr::copy(self.ptr.as_ptr().add(self.start), self.ptr.as_ptr(), self.len)};
+        }
+        self.start = 0;
+        unsafe {core::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.len)}
     }
 
     pub fn shrink_to_fit(&mut self) -> Result<(), AllocError> {
@@ -279,7 +294,7 @@ where
     }
 
     fn grow(&mut self) -> Result<(), AllocError> {
-        let new_capacity = NonZeroUsize::new(self.capacity).unwrap_or(DEFAULT_SIZE);
+        let new_capacity = NonZeroUsize::new(self.capacity*2).unwrap_or(DEFAULT_SIZE);
         self.grow_to(new_capacity)
     }
 
@@ -896,5 +911,35 @@ mod tests {
             assert_eq!(a, b);
             assert_eq!(b, popped);
         }
+    }
+
+    #[test]
+    fn make_contiguous_single() {
+        let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(50);
+        queue.extend(iter::repeat(0).take(25));
+        queue.extend(0..25);
+        queue.drain().take(25).for_each(drop);
+        let a = queue.make_contiguous();
+        for i in 0..25 {
+            assert_eq!(i, a[i])
+        }
+    }
+
+    #[test]
+    fn make_contiguous_double() {
+        let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(20);
+        queue.extend(iter::repeat(0).take(10));
+        queue.drain().take(10).for_each(drop);
+        queue.extend(0..15);
+        let a = queue.make_contiguous();
+        for i in 0..15 {
+            assert_eq!(i, a[i])
+        }
+    }
+
+    #[test]
+    fn inf_extend() {
+        let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(50);
+        queue.extend(iter::repeat(0).take(10000));
     }
 }

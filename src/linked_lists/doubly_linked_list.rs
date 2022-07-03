@@ -1,23 +1,23 @@
+use alloc::alloc::Global;
 use core::{
-    alloc::{Allocator, AllocError, Layout},
+    alloc::{AllocError, Allocator, Layout},
     ptr::{self, drop_in_place, NonNull},
 };
-use alloc::alloc::Global;
 
-type NodePtr<T,A> = NonNull<DoublyLinkedListNode<T,A>>;
+type NodePtr<T, A> = NonNull<DoublyLinkedListNode<T, A>>;
 
 pub struct DoublyLinkedList<T, A: Allocator + Clone = Global> {
-    head: Option<NodePtr<T,A>>,
-    tail: Option<NodePtr<T,A>>,
+    head: Option<NodePtr<T, A>>,
+    tail: Option<NodePtr<T, A>>,
     len: usize,
-    alloc: A
+    alloc: A,
 }
 
 impl<T> DoublyLinkedList<T> {
     pub fn new() -> Self {
         Self::default()
     }
-    
+
     pub fn len(&self) -> usize {
         todo!()
     }
@@ -27,9 +27,14 @@ impl<T> DoublyLinkedList<T> {
     }
 }
 
-impl<T,A: Allocator + Clone> DoublyLinkedList<T,A> {
+impl<T, A: Allocator + Clone> DoublyLinkedList<T, A> {
     pub fn new_in(alloc: A) -> Self {
-        Self { head: None, tail: None, alloc, len: 0}
+        Self {
+            head: None,
+            tail: None,
+            alloc,
+            len: 0,
+        }
     }
 
     pub fn push_front(&mut self, item: T) -> Result<(), AllocError> {
@@ -68,14 +73,14 @@ impl<T> Default for DoublyLinkedList<T> {
     }
 }
 
-pub struct DoublyLinkedListNode<T,A: Allocator + Clone> {
+pub struct DoublyLinkedListNode<T, A: Allocator + Clone> {
     value: T,
-    prev: Option<NodePtr<T,A>>,
-    next: Option<NodePtr<T,A>>,
+    prev: Option<NodePtr<T, A>>,
+    next: Option<NodePtr<T, A>>,
     alloc: A,
 }
 
-impl<T,A: Allocator + Clone> DoublyLinkedListNode<T,A> {
+impl<T, A: Allocator + Clone> DoublyLinkedListNode<T, A> {
     const LAYOUT: Layout = Layout::new::<Self>();
 
     pub unsafe fn drop(ptr: NonNull<Self>) {
@@ -94,19 +99,27 @@ impl<T,A: Allocator + Clone> DoublyLinkedListNode<T,A> {
         Self::to_owned(ptr).value
     }
 
-    pub unsafe fn new(alloc: A, value: T, next: Option<NonNull<DoublyLinkedListNode<T,A>>>, prev: Option<NonNull<DoublyLinkedListNode<T,A>>>) -> Result<NonNull<Self>, AllocError> {
+    pub unsafe fn new(
+        alloc: A,
+        value: T,
+        next: Option<NonNull<DoublyLinkedListNode<T, A>>>,
+        prev: Option<NonNull<DoublyLinkedListNode<T, A>>>,
+    ) -> Result<NonNull<Self>, AllocError> {
         let ptr: NonNull<Self> = alloc.allocate(Self::LAYOUT)?.cast();
-        
-        ptr::write(ptr.as_ptr(), Self {
-            value,
-            prev,
-            next,
-            alloc,
-        });
+
+        ptr::write(
+            ptr.as_ptr(),
+            Self {
+                value,
+                prev,
+                next,
+                alloc,
+            },
+        );
 
         Ok(ptr)
     }
-/* 
+    /*
     pub unsafe fn deref(ptr: NonNull<Self>) -> &Self {
         todo!()
     }
@@ -117,12 +130,7 @@ impl<T,A: Allocator + Clone> DoublyLinkedListNode<T,A> {
 }
 
 //use iters::*;
-mod iters {
-
-}
-
+mod iters {}
 
 #[cfg(test)]
-mod tests {
-
-}
+mod tests {}

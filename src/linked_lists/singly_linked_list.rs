@@ -8,9 +8,9 @@ use core::{
     ops::{Deref, DerefMut},
 };
 
-use traits::hash_table::seperate_chaining::bucket::*;
+use crate::traits::hash_table::seperate_chaining::bucket::*;
 
-mod r#unsafe;
+pub mod r#unsafe;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct SinglyLinkedList<T, A: Allocator + Clone = alloc::alloc::Global> {
@@ -306,7 +306,7 @@ impl<K: Eq, V, A: Allocator + Clone> Bucket<K, V, A> for SinglyLinkedList<(K, V)
         }
     }
     unsafe fn insert_unchecked(&mut self, key: K, value: V) -> Result<(), AllocError> {
-        self.try_push((key,value))
+        self.try_push((key, value))
     }
     fn clear(&mut self) {
         self.head = None;

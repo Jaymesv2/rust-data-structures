@@ -11,8 +11,8 @@ type ElementsPtr<K, V, A> = NonNull<SLLBucket<K, V, A>>;
 mod buckets;
 pub use buckets::*;
 
-use traits::hash_table::seperate_chaining::bucket::*;
-use traits::hash_table::*;
+use crate::traits::hash_table::seperate_chaining::bucket::*;
+use crate::traits::hash_table::*;
 
 pub type SLLHashTableImpl<K, V, S, A> = SCHashTableImpl<K, V, S, SLLBucket<K, V, A>, A>;
 
@@ -63,10 +63,10 @@ where
     }
 
     fn clear(&mut self) {
-        for bucket in unsafe {slice::from_raw_parts_mut(self.ptr.as_ptr(), self.len())} {
+        for bucket in unsafe { slice::from_raw_parts_mut(self.ptr.as_ptr(), self.len()) } {
             bucket.clear();
         }
-        
+
         self.len = 0;
     }
 
@@ -86,11 +86,13 @@ where
         // move elements from old area to new area and dealloc old area
         if old_capacity != 0 {
             unsafe {
-                let new_arr  = slice::from_raw_parts_mut(self.ptr.as_ptr(), self.len());
+                let new_arr = slice::from_raw_parts_mut(self.ptr.as_ptr(), self.len());
                 for bucket in slice::from_raw_parts_mut(old_ptr.as_ptr(), old_capacity) {
                     if !bucket.is_empty() {
                         for (k, v) in bucket.drain() {
-                            new_arr.get_unchecked_mut(self.key_index(&k)).insert_unchecked(k, v)?;
+                            new_arr
+                                .get_unchecked_mut(self.key_index(&k))
+                                .insert_unchecked(k, v)?;
                         }
                     }
                 }

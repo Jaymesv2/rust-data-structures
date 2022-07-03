@@ -1,3 +1,12 @@
+#![feature(
+    test,
+    variant_count,
+    iter_intersperse,
+    generic_associated_types,
+    generators,
+    allocator_api
+)]
+
 use std::{
     alloc::Global,
     collections::{hash_map::RandomState, HashMap},
@@ -9,13 +18,14 @@ use std::{
 use rand::{
     distributions::{Distribution, Standard},
     rngs::StdRng,
-    SeedableRng,
+    Rng, SeedableRng,
 };
 
-use crate::SCHashTable;
-use traits::hash_table::HashTable;
+use hash_table::hash_table::SCHashTable;
+use hash_table::traits::hash_table::HashTable;
 
 const MIN_KEYS: usize = 1;
+
 #[test]
 fn run_test() {
     let seed = None;
@@ -242,8 +252,6 @@ enum Operation<K, V> {
     Remove(K),
     Get(K),
 }
-
-use rand::Rng;
 
 impl<K, V> Operation<K, V>
 where

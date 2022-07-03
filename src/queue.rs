@@ -1,10 +1,3 @@
-#![cfg_attr(not(test), no_std)]
-#![feature(generic_associated_types, allocator_api, const_option, let_chains, test)]
-#[cfg(test)]
-extern crate test;
-//#![warn(unsafe_code)]
-
-extern crate alloc;
 use alloc::{alloc::Global, string::String, vec::Vec};
 use core::{
     alloc::{AllocError, Allocator, Layout},
@@ -14,6 +7,7 @@ use core::{
     ops::{Index, IndexMut},
     ptr::{self, drop_in_place, NonNull},
 };
+mod iters;
 use iters::*;
 
 /// small vecdeque implementation
@@ -278,12 +272,18 @@ where
                 unsafe{ptr::swap(self.ptr.as_ptr().add(i), self.ptr.as_ptr().add(i+snd_len))}
             }*/
         } else {
-            unsafe {ptr::copy(self.ptr.as_ptr().add(self.start), self.ptr.as_ptr(), self.len)};
+            unsafe {
+                ptr::copy(
+                    self.ptr.as_ptr().add(self.start),
+                    self.ptr.as_ptr(),
+                    self.len,
+                )
+            };
         }
         self.start = 0;
-        unsafe {core::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.len)}
+        unsafe { core::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.len) }
     }
-    
+
     pub fn insert(&mut self, index: usize, value: T) {
         if index > self.len {
             return;
@@ -295,20 +295,19 @@ where
         if index > self.len {
             return None;
         }
-        let elem = unsafe {ptr::read(self.ptr_to(index))};
+        let elem = unsafe { ptr::read(self.ptr_to(index)) };
         // move all the other elements
         // if there are 2 segments
         if self.start + self.len > self.capacity {
             todo!()
         } else {
-            let num_to_move = self.len - index-1;
+            let num_to_move = self.len - index - 1;
 
             unsafe {
-                ptr::copy(self.ptr_to(index+1), self.ptr_to_mut(index), num_to_move);
+                ptr::copy(self.ptr_to(index + 1), self.ptr_to_mut(index), num_to_move);
             }
         }
         self.len -= 1;
-        
 
         Some(elem)
     }
@@ -325,7 +324,7 @@ where
     }
 
     fn grow(&mut self) -> Result<(), AllocError> {
-        let new_capacity = NonZeroUsize::new(self.capacity*2).unwrap_or(DEFAULT_SIZE);
+        let new_capacity = NonZeroUsize::new(self.capacity * 2).unwrap_or(DEFAULT_SIZE);
         self.grow_to(new_capacity)
     }
 
@@ -513,211 +512,6 @@ impl<T, A: Allocator + Clone> From<Vec<T, A>> for ArrayQueue<T, A> {
     }
 }
 
-mod iters {
-    use super::ArrayQueue;
-    use alloc::alloc::Global;
-    use core::{alloc::Allocator, iter::FusedIterator, mem::transmute, ptr};
-
-    pub struct Iter<'a, T, A: Allocator = Global> {
-        inner: &'a ArrayQueue<T, A>,
-        current_ind: usize,
-        remaining: usize,
-    }
-
-    impl<'a, T, A: Allocator> From<&'a ArrayQueue<T, A>> for Iter<'a, T, A> {
-        fn from(inner: &'a ArrayQueue<T, A>) -> Self {
-            Self {
-                inner,
-                current_ind: 0,
-                remaining: inner.len(),
-            }
-        }
-    }
-
-    impl<'a, T: 'a, A: Allocator> Iterator for Iter<'a, T, A> {
-        type Item = &'a T;
-        fn next(&mut self) -> Option<Self::Item> {
-            (self.remaining != 0).then(|| {
-                self.remaining -= 1;
-                self.current_ind += 1;
-                unsafe { self.inner.get_unchecked(self.current_ind - 1) }
-            })
-        }
-
-        fn size_hint(&self) -> (usize, Option<usize>) {
-            (self.remaining, Some(self.remaining))
-        }
-    }
-
-    impl<'a, T: 'a, A: Allocator> DoubleEndedIterator for Iter<'a, T, A> {
-        fn next_back(&mut self) -> Option<Self::Item> {
-            (self.remaining != 0).then(|| {
-                self.remaining -= 1;
-                let ind = self.current_ind + self.remaining;
-                unsafe { self.inner.get_unchecked(ind) }
-            })
-        }
-    }
-
-    impl<'a, T: 'a, A: Allocator> ExactSizeIterator for Iter<'a, T, A> {
-        fn len(&self) -> usize {
-            self.remaining
-        }
-    }
-
-    impl<'a, T: 'a, A: Allocator> FusedIterator for Iter<'a, T, A> {}
-
-    pub struct IterMut<'a, T, A: Allocator = Global> {
-        inner: &'a mut ArrayQueue<T, A>,
-        current_ind: usize,
-        remaining: usize,
-    }
-
-    impl<'a, T, A: Allocator> From<&'a mut ArrayQueue<T, A>> for IterMut<'a, T, A> {
-        fn from(inner: &'a mut ArrayQueue<T, A>) -> Self {
-            Self {
-                current_ind: 0,
-                remaining: inner.len(),
-                inner,
-            }
-        }
-    }
-
-    impl<'a, T: 'a, A: Allocator> Iterator for IterMut<'a, T, A> {
-        type Item = &'a mut T;
-        fn next(&mut self) -> Option<Self::Item> {
-            (self.remaining != 0).then(|| {
-                self.remaining -= 1;
-                self.current_ind += 1;
-                // the transmute makes the lifetimes happy
-                unsafe { transmute(self.inner.get_unchecked_mut(self.current_ind - 1)) }
-            })
-        }
-
-        fn size_hint(&self) -> (usize, Option<usize>) {
-            (self.remaining, Some(self.remaining))
-        }
-    }
-
-    impl<'a, T: 'a, A: Allocator> DoubleEndedIterator for IterMut<'a, T, A> {
-        fn next_back(&mut self) -> Option<Self::Item> {
-            (self.remaining != 0).then(|| {
-                self.remaining -= 1;
-                let ind = self.current_ind + self.remaining;
-                unsafe { transmute(self.inner.get_unchecked_mut(ind)) }
-            })
-        }
-    }
-
-    impl<'a, T: 'a, A: Allocator> ExactSizeIterator for IterMut<'a, T, A> {
-        fn len(&self) -> usize {
-            self.remaining
-        }
-    }
-
-    impl<'a, T: 'a, A: Allocator> FusedIterator for IterMut<'a, T, A> {}
-
-    pub struct Drain<'a, T, A: Allocator = Global> {
-        inner: &'a mut ArrayQueue<T, A>,
-        len: usize,
-        start: usize,
-    }
-
-    impl<'a, T, A: Allocator> From<&'a mut ArrayQueue<T, A>> for Drain<'a, T, A> {
-        fn from(inner: &'a mut ArrayQueue<T, A>) -> Self {
-            let len = inner.len;
-            inner.len = 0;
-            Self {
-                len,
-                start: inner.start,
-                inner,
-            }
-        }
-    }
-
-    impl<'a, T: 'a, A: Allocator> Iterator for Drain<'a, T, A> {
-        type Item = T;
-        fn next(&mut self) -> Option<Self::Item> {
-            (self.len != 0).then(|| {
-                let elem = unsafe { ptr::read(self.inner.ptr.as_ptr().add(self.start)) };
-                self.start = (self.start + 1) % (self.inner.capacity);
-                self.len -= 1;
-                elem
-            })
-        }
-
-        fn size_hint(&self) -> (usize, Option<usize>) {
-            (self.len, Some(self.len))
-        }
-    }
-
-    impl<'a, T: 'a, A: Allocator> DoubleEndedIterator for Drain<'a, T, A> {
-        fn next_back(&mut self) -> Option<Self::Item> {
-            (self.len != 0).then(|| {
-                self.len -= 1;
-                unsafe {
-                    ptr::read(
-                        self.inner
-                            .ptr
-                            .as_ptr()
-                            .add((self.start + self.len) % self.inner.capacity),
-                    )
-                }
-            })
-        }
-    }
-
-    impl<'a, T: 'a, A: Allocator> ExactSizeIterator for Drain<'a, T, A> {
-        fn len(&self) -> usize {
-            self.len
-        }
-    }
-
-    impl<'a, T: 'a, A: Allocator> FusedIterator for Drain<'a, T, A> {}
-
-    impl<'a, T, A: Allocator> Drop for Drain<'a, T, A> {
-        fn drop(&mut self) {
-            self.inner.start = self.start;
-            self.inner.len = self.len;
-        }
-    }
-
-    pub struct IntoIter<T, A: Allocator = Global> {
-        inner: ArrayQueue<T, A>,
-    }
-
-    impl<T, A: Allocator> From<ArrayQueue<T, A>> for IntoIter<T, A> {
-        fn from(inner: ArrayQueue<T, A>) -> Self {
-            Self { inner }
-        }
-    }
-
-    impl<'a, T: 'a, A: Allocator> Iterator for IntoIter<T, A> {
-        type Item = T;
-        fn next(&mut self) -> Option<Self::Item> {
-            self.inner.pop_front()
-        }
-
-        fn size_hint(&self) -> (usize, Option<usize>) {
-            (self.inner.len, Some(self.inner.len))
-        }
-    }
-
-    impl<'a, T: 'a, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
-        fn next_back(&mut self) -> Option<Self::Item> {
-            self.inner.pop_back()
-        }
-    }
-
-    impl<'a, T: 'a, A: Allocator> ExactSizeIterator for IntoIter<T, A> {
-        fn len(&self) -> usize {
-            self.inner.len
-        }
-    }
-
-    impl<'a, T: 'a, A: Allocator> FusedIterator for IntoIter<T, A> {}
-}
-
 #[cfg(all(test, not(miri)))]
 mod bench {
     use super::*;
@@ -732,7 +526,7 @@ mod bench {
             }
         });
     }
-    
+
     #[bench]
     fn create_insert_100_drain_bench(b: &mut Bencher) {
         b.iter(|| {
@@ -999,7 +793,7 @@ mod tests {
         let mut queue: ArrayQueue<usize> = (0..10).collect();
         assert_eq!(queue.remove(5), Some(5));
         let a = queue.make_contiguous();
-        assert_eq!(a, &[0,1,2,3,4,6,7,8,9])
+        assert_eq!(a, &[0, 1, 2, 3, 4, 6, 7, 8, 9])
     }
 
     #[test]
@@ -1011,7 +805,6 @@ mod tests {
         assert_eq!(queue.remove(5), Some(5));
 
         let a = queue.make_contiguous();
-        assert_eq!(a, &[0,1,2,3,4,6,7,8])
+        assert_eq!(a, &[0, 1, 2, 3, 4, 6, 7, 8])
     }
-
 }

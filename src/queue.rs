@@ -11,7 +11,9 @@ use core::{
 mod iters;
 use iters::*;
 
-/// small vecdeque implementation
+/// A double ended queue using a growable ring buffer.
+///
+/// Inspired by the stdlib implementaiton.
 ///
 /// use `push_back` to add to the queue and `pop_front` to remove
 pub struct ArrayQueue<T, A = Global>
@@ -58,13 +60,7 @@ where
     }
 
     pub fn as_slices(&self) -> (&[T], &[T]) {
-        /*
-        // if the current capacity is zero then do nothing
-        if self.capacity == 0 || self.len == 0 {
-            return (&[], &[]);
-        }*/
-        // i'm still not sure if this is right. it passes all the tests but i feel like there are edge cases where it wont work
-        let len1 = self.capacity - self.start;
+        let len1 = core::cmp::min(self.len, self.capacity - self.start);
         unsafe {
             (
                 core::slice::from_raw_parts(self.ptr.as_ptr().add(self.start), len1),
@@ -74,7 +70,7 @@ where
     }
 
     pub fn as_slices_mut(&mut self) -> (&mut [T], &mut [T]) {
-        let len1 = self.capacity - self.start;
+        let len1 = core::cmp::min(self.len, self.capacity - self.start);
         unsafe {
             (
                 core::slice::from_raw_parts_mut(self.ptr.as_ptr().add(self.start), len1),
@@ -285,11 +281,50 @@ where
         unsafe { core::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.len) }
     }
 
-    pub fn insert(&mut self, index: usize, value: T) {
-        if index > self.len {
-            return;
+    pub fn insert(&mut self, index: usize, value: T) -> Result<(), AllocError> {
+        assert!(index <= self.len + 1, "out of bounds");
+        if self.len + 1 > self.capacity {
+            self.grow()?;
+            // this means that the sequence is contiguous
+            return Ok(());
         }
-        todo!()
+        let real_index = (self.start + index) % self.capacity;
+        let ptr = self.ptr.as_ptr();
+
+        // will end up with 2 segments
+        // |--ABCDEFG|
+        if self.start + self.len >= self.capacity {
+            
+            // in first segment
+            let elems_at_front = (self.start+self.len)%self.capacity;
+            if self.len > self.capacity - self.start {
+                
+            }
+            // move front elems to 
+            if elems_at_front != 0 {
+                unsafe {
+                    ptr::copy(ptr, ptr.add(1), elems_at_front);
+                }
+            }
+            unsafe {
+                // this might be non overlapping
+                // move back element to front
+                ptr::copy(ptr.add(self.capacity-1), ptr, 1);
+            }
+        } 
+
+        unsafe {
+            ptr::copy(
+                    ptr.add(real_index),
+                    ptr.add(real_index + 1),
+                    self.len - index,
+                    //core::cmp::min(self.len, self.capacity - self.start)-1
+            );
+            ptr::write(ptr.add(real_index), value);
+        }
+        self.len += 1;
+        
+        Ok(())
     }
 
     pub fn remove(&mut self, index: usize) -> Option<T> {
@@ -830,7 +865,7 @@ mod tests {
     }
 
     #[test]
-    fn inf_extend() {
+    fn large_extend() {
         let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(50);
         queue.extend(iter::repeat(0).take(10000));
     }
@@ -839,8 +874,8 @@ mod tests {
     fn remove_single() {
         let mut queue: ArrayQueue<usize> = (0..10).collect();
         assert_eq!(queue.remove(5), Some(5));
-        let a = queue.make_contiguous();
-        assert_eq!(a, &[0, 1, 2, 3, 4, 6, 7, 8, 9])
+        let r: (&[usize], &[usize]) = (&[0, 1, 2, 3, 4, 6, 7, 8, 9], &[]);
+        assert_eq!(queue.as_slices(), r)
     }
 
     #[test]
@@ -851,7 +886,71 @@ mod tests {
         queue.extend(0..9);
         assert_eq!(queue.remove(5), Some(5));
 
-        let a = queue.make_contiguous();
-        assert_eq!(a, &[0, 1, 2, 3, 4, 6, 7, 8])
+        let r: (&[usize], &[usize]) = (&[1, 2, 3, 4, 6], &[7, 8]);
+        assert_eq!(queue.as_slices(), r);
     }
+
+    #[test]
+    fn insert_single() {
+        let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(10);
+        queue.extend(0..=4);
+        println!("{queue:?}");
+        queue.insert(2, 0).expect("failed to allocate");
+        println!("{queue:?}");
+        queue.insert(4, 10).expect("failed to allocate");
+        println!("{queue:?}");
+        let r: (&[usize], &[usize]) = (&[0, 1, 0, 2, 10, 3, 4], &[]);
+        assert_eq!(queue.as_slices(), r)
+    }
+
+    #[test]
+    fn insert_single_at_end() {
+        let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(10);
+        queue.extend(iter::repeat(0).take(5));
+        queue.drain().take(5).for_each(drop);
+        queue.extend(0..4);
+        println!("{queue:?}");
+        queue.insert(4, 4).expect("failed to alloc");
+        println!("{queue:?}");
+        let r: (&[usize], &[usize]) = (&[0, 1, 2, 3, 4], &[]);
+        assert_eq!(queue.as_slices(), r)
+    }
+
+    #[test]
+    fn insert_single_to_double_fst() {
+        let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(10);
+        queue.extend(iter::repeat(0).take(5));
+        queue.drain().take(5).for_each(drop);
+        queue.extend(1..6);
+        println!("{queue:?}");
+        queue.insert(0, 0).expect("failed to alloc");
+        println!("{queue:?}");
+        let r: (&[usize], &[usize]) = (&[0, 1, 2, 3, 4], &[5]);
+        assert_eq!(queue.as_slices(), r)
+    }
+    #[test]
+    fn insert_single_to_double() {
+        let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(10);
+        queue.extend(iter::repeat(0).take(5));
+        queue.drain().take(5).for_each(drop);
+        queue.extend(0..5);
+        println!("{queue:?}");
+        queue.insert(5, 5).expect("failed to alloc");
+        println!("{queue:?}");
+        let a = queue.into_iter().collect::<Vec<_>>();
+        assert_eq!(&a, &[0, 1, 2, 3, 4, 5])
+    }
+
+    #[test]
+    fn insert_grow_fst() {
+        let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(10);
+        queue.extend(1..11);
+        println!("{queue:?}");
+        queue.insert(0,0).expect("failed to alloc");
+        
+        let r: (&[usize], &[usize]) = (&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], &[]);
+        assert_eq!(queue.as_slices(), r);
+    }
+
+    
 }

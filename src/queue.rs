@@ -283,10 +283,8 @@ where
 
     pub fn insert(&mut self, index: usize, value: T) -> Result<(), AllocError> {
         assert!(index <= self.len + 1, "out of bounds");
-        if self.len + 1 > self.capacity {
+        if self.len + 1 >= self.capacity {
             self.grow()?;
-            // this means that the sequence is contiguous
-            return Ok(());
         }
         let real_index = (self.start + index) % self.capacity;
         let ptr = self.ptr.as_ptr();
@@ -294,7 +292,6 @@ where
         // will end up with 2 segments
         // |--ABCDEFG|
         if self.start + self.len >= self.capacity {
-            
             // in first segment
             let elems_at_front = (self.start+self.len)%self.capacity;
             if self.len > self.capacity - self.start {
@@ -946,6 +943,9 @@ mod tests {
         let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(10);
         queue.extend(1..11);
         println!("{queue:?}");
+        let r: (&[usize], &[usize]) = (&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10], &[]);
+
+        assert_eq!(queue.as_slices(), r);
         queue.insert(0,0).expect("failed to alloc");
         
         let r: (&[usize], &[usize]) = (&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], &[]);

@@ -7,14 +7,14 @@ use core::{
 
 use crate::traits::hash_table::seperate_chaining::bucket::*;
 
-pub type ElementPtr<K, V> = NonNull<SinglyLinkedListNode<K, V>>;
+pub type ElementPtr<T> = NonNull<SinglyLinkedListNode<T>>;
 
-pub struct UnsafeSinglyLinkedList<K, V, A: Allocator + Clone> {
-    head: Option<ElementPtr<K, V>>,
+pub struct UnsafeSinglyLinkedList<T, A: Allocator + Clone> {
+    head: Option<ElementPtr<T>>,
     alloc: A,
 }
 
-impl<K, V, A> Bucket<K, V, A> for UnsafeSinglyLinkedList<K, V, A>
+impl<K, V, A> Bucket<K, V, A> for UnsafeSinglyLinkedList<(K, V), A>
 where
     K: Eq + Hash,
     A: Allocator + Clone,
@@ -28,9 +28,9 @@ where
     }
 
     fn insert(&mut self, key: K, value: V) -> Result<Option<(K, V)>, AllocError> {
-        let mut node = unsafe { SinglyLinkedListNode::ptr_to_new(key, value, self.alloc.clone()) }?;
+        let mut node = unsafe { SinglyLinkedListNode::ptr_to_new((key, value), self.alloc.clone()) }?;
         Ok(unsafe {
-            let rem = self.remove(&node.as_ref().key);
+            let rem = self.remove(&node.as_ref().val.0);
             node.as_mut().next = self.head;
             self.head = Some(node);
             rem
@@ -38,7 +38,7 @@ where
     }
 
     unsafe fn insert_unchecked(&mut self, key: K, value: V) -> Result<(), AllocError> {
-        let mut node = SinglyLinkedListNode::ptr_to_new(key, value, self.alloc.clone())?;
+        let mut node = SinglyLinkedListNode::ptr_to_new((key, value), self.alloc.clone())?;
         node.as_mut().next = self.head;
         self.head = Some(node);
         Ok(())
@@ -47,10 +47,10 @@ where
     fn remove(&mut self, key: &K) -> Option<(K, V)> {
         let mut ptr = None;
         unsafe {
-            let mut prev: Option<ElementPtr<K, V>> = None;
+            let mut prev: Option<ElementPtr<(K, V)>> = None;
             let mut head = self.head;
             while let Some(elem) = head {
-                if &elem.as_ref().key == key {
+                if &elem.as_ref().val.0 == key {
                     let next = elem.as_ref().next;
                     if let Some(mut parent_ptr) = prev {
                         parent_ptr.as_mut().next = next;
@@ -68,7 +68,7 @@ where
     }
 
     fn clear(&mut self) {
-        let mut head: Option<ElementPtr<K, V>> = self.head;
+        let mut head: Option<ElementPtr<(K, V)>> = self.head;
         while let Some(ptr) = head {
             head = unsafe { ptr.as_ref().next };
             unsafe {
@@ -84,13 +84,13 @@ where
     }
 }
 
-impl<K, V, A: Allocator + Clone> Drop for UnsafeSinglyLinkedList<K, V, A> {
+impl<T, A: Allocator + Clone> Drop for UnsafeSinglyLinkedList<T, A> {
     fn drop(&mut self) {
         let mut head = self.head;
         while let Some(s) = head {
             unsafe {
                 head = s.as_ref().next;
-                let layout = Layout::new::<SinglyLinkedListNode<K, V>>();
+                let layout = Layout::new::<SinglyLinkedListNode<T>>();
                 drop_in_place(s.as_ptr());
                 self.alloc.deallocate(s.cast(), layout);
             }
@@ -98,7 +98,7 @@ impl<K, V, A: Allocator + Clone> Drop for UnsafeSinglyLinkedList<K, V, A> {
     }
 }
 
-impl<'a, K, V, A> BucketIter<'a, K, V, A> for UnsafeSinglyLinkedList<K, V, A>
+impl<'a, K, V, A> BucketIter<'a, K, V, A> for UnsafeSinglyLinkedList<(K, V), A>
 where
     K: Eq + Hash + 'a,
     V: 'a,
@@ -113,7 +113,7 @@ where
     }
 }
 
-impl<'a, K, V, A> BucketDrain<'a, K, V, A> for UnsafeSinglyLinkedList<K, V, A>
+impl<'a, K, V, A> BucketDrain<'a, K, V, A> for UnsafeSinglyLinkedList<(K, V), A>
 where
     Self: 'a,
     K: Eq + Hash,
@@ -129,8 +129,8 @@ where
 }
 
 pub struct SLLBucketIter<'a, K, V, A: Allocator + Clone> {
-    head: Option<ElementPtr<K, V>>,
-    marker: PhantomData<(&'a UnsafeSinglyLinkedList<K, V, A>, A)>,
+    head: Option<ElementPtr<(K, V)>>,
+    marker: PhantomData<(&'a UnsafeSinglyLinkedList<(K, V), A>, A)>,
 }
 
 impl<'a, K: 'a, V: 'a, A: Allocator + Clone> Iterator for SLLBucketIter<'a, K, V, A> {
@@ -139,7 +139,8 @@ impl<'a, K: 'a, V: 'a, A: Allocator + Clone> Iterator for SLLBucketIter<'a, K, V
         if let Some(s) = self.head {
             unsafe {
                 self.head = s.as_ref().next;
-                Some((&s.as_ref().key, &s.as_ref().val))
+                let r = s.as_ref();
+                Some((&r.val.0, &r.val.1))
             }
         } else {
             None
@@ -148,7 +149,7 @@ impl<'a, K: 'a, V: 'a, A: Allocator + Clone> Iterator for SLLBucketIter<'a, K, V
 }
 
 pub struct SLLBucketDrain<'a, K, V, A: Allocator + Clone> {
-    head: &'a mut Option<ElementPtr<K, V>>,
+    head: &'a mut Option<ElementPtr<(K, V)>>,
     alloc: A,
 }
 
@@ -168,36 +169,33 @@ where
     }
 }
 
-pub struct SinglyLinkedListNode<K, V> {
-    pub key: K,
-    pub val: V,
-    next: Option<ElementPtr<K, V>>,
+pub struct SinglyLinkedListNode<T> {
+    pub val: T,
+    next: Option<ElementPtr<T>>,
 }
 
 /// WARNING: this struct does not drop any other list elements.
-impl<K, V> SinglyLinkedListNode<K, V> {
+impl<T> SinglyLinkedListNode<T> {
     /// # Safety
     /// the caller is in charge of deallocation
     pub unsafe fn ptr_to_new<A: Allocator>(
-        k: K,
-        v: V,
+        item: T,
         alloc: A,
-    ) -> Result<ElementPtr<K, V>, AllocError> {
+    ) -> Result<ElementPtr<T>, AllocError> {
         let layout = Layout::new::<Self>();
         let ptr = alloc.allocate(layout)?.cast();
         let i = Self {
-            key: k,
-            val: v,
+            val: item,
             next: None,
         };
         ptr::write(ptr.as_ptr(), i);
         Ok(ptr)
     }
 
-    pub unsafe fn into_tuple<A: Allocator>(s: ElementPtr<K, V>, alloc: A) -> (K, V) {
+    pub unsafe fn into_tuple<A: Allocator>(s: ElementPtr<T>, alloc: A) -> T {
         let v = ptr::read(s.as_ptr());
-        alloc.deallocate(s.cast(), Layout::new::<SinglyLinkedListNode<K, V>>());
-        (v.key, v.val)
+        alloc.deallocate(s.cast(), Layout::new::<SinglyLinkedListNode<T>>());
+        v.val
     }
 }
 
@@ -208,20 +206,20 @@ mod pub_api_tests {
 
     #[test]
     fn insert_drop() {
-        let mut a = UnsafeSinglyLinkedList::<i32, i32, _>::new_in(Global);
+        let mut a = UnsafeSinglyLinkedList::<(i32, i32), _>::new_in(Global);
         a.insert(1, 1).expect("alloc failed");
-        a.insert(2, 1).expect("alloc failed");
+        a.insert(2, 2).expect("alloc failed");
     }
 
     #[test]
     fn remove_nothing() {
-        let mut a = UnsafeSinglyLinkedList::<i32, i32, _>::new_in(Global);
+        let mut a = UnsafeSinglyLinkedList::<(i32, i32), _>::new_in(Global);
         assert!(a.remove(&1).is_none());
     }
 
     #[test]
     fn insert_remove() {
-        let mut a = UnsafeSinglyLinkedList::<i32, i32, _>::new_in(Global);
+        let mut a = UnsafeSinglyLinkedList::<(i32, i32), _>::new_in(Global);
         a.insert(1, 1).expect("alloc failed");
         let i = a.remove(&1).unwrap();
         assert_eq!(i.1, 1);

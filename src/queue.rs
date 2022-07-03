@@ -386,15 +386,21 @@ where
     }
 
     pub fn iter(&self) -> Iter<'_, T, A> {
-        Iter::from(self)
+        Iter { inner: self, current_ind: 0, remaining: self.len }
     }
 
     pub fn iter_mut(&mut self) -> IterMut<'_, T, A> {
-        IterMut::from(self)
+        IterMut { current_ind: 0, remaining: self.len, inner: self }
     }
 
     pub fn drain(&mut self) -> Drain<'_, T, A> {
-        Drain::from(self)
+        let len = self.len;
+        self.len = 0;
+        Drain {
+            len,
+            start: self.start,
+            inner: self,
+        }
     }
 }
 
@@ -471,7 +477,7 @@ impl<T, A: Allocator + Clone> IntoIterator for ArrayQueue<T, A> {
     type IntoIter = IntoIter<T, A>;
     type Item = T;
     fn into_iter(self) -> Self::IntoIter {
-        IntoIter::from(self)
+        IntoIter {inner: self}
     }
 }
 

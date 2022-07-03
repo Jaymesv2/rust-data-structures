@@ -1,3 +1,5 @@
+use crate::prelude::*;
+
 use core::{
     alloc::{AllocError, Allocator, Layout},
     hash::Hash,
@@ -28,7 +30,8 @@ where
     }
 
     fn insert(&mut self, key: K, value: V) -> Result<Option<(K, V)>, AllocError> {
-        let mut node = unsafe { SinglyLinkedListNode::ptr_to_new((key, value), self.alloc.clone()) }?;
+        let mut node =
+            unsafe { SinglyLinkedListNode::ptr_to_new((key, value), self.alloc.clone()) }?;
         Ok(unsafe {
             let rem = self.remove(&node.as_ref().val.0);
             node.as_mut().next = self.head;
@@ -97,7 +100,7 @@ impl<T, A: Allocator + Clone> Drop for UnsafeSinglyLinkedList<T, A> {
         }
     }
 }
-
+/*
 impl<'a, K, V, A> BucketIter<'a, K, V, A> for UnsafeSinglyLinkedList<(K, V), A>
 where
     K: Eq + Hash + 'a,
@@ -111,30 +114,57 @@ where
             marker: PhantomData,
         }
     }
+}*/
+
+impl<T, A: Allocator + Clone> Iterable for UnsafeSinglyLinkedList<T, A> {
+    type Item = T;
+    type Iter<'a> = SLLBucketIter<'a, T, A>
+    where
+        T: 'a, A: 'a
+    ;
+    fn iter<'a>(&'a self) -> Self::Iter<'a> {
+        SLLBucketIter {
+            marker: PhantomData,
+            head: self.head,
+        }
+    }
 }
+impl<T, A: Allocator + Clone> Drainable for UnsafeSinglyLinkedList<T, A> {
+    type Item = T;
+    type Drain<'a> = SLLBucketDrain<'a, T, A>
+    where
+        T: 'a, A: 'a
+    ;
+    fn drain<'a>(&'a mut self) -> Self::Drain<'a> {
+        SLLBucketDrain {
+            alloc: self.alloc.clone(),
+            head: &mut self.head,
+        }
+    }
+}
+/*
+impl<'a, K, V, A> BucketIter<'a, K, V, A> for UnsafeSinglyLinkedList<(K, V), A>
+where
+    K: Eq + Hash + 'a,
+    V: 'a,
+    A: Allocator + Clone + 'a,
+{}
+
 
 impl<'a, K, V, A> BucketDrain<'a, K, V, A> for UnsafeSinglyLinkedList<(K, V), A>
 where
     Self: 'a,
     K: Eq + Hash,
     A: Allocator + Clone,
-{
-    type DrainIter = SLLBucketDrain<'a, K, V, A>;
-    fn drain(&'a mut self) -> Self::DrainIter {
-        SLLBucketDrain {
-            head: &mut self.head,
-            alloc: self.alloc.clone(),
-        }
-    }
+{}*/
+
+pub struct SLLBucketIter<'a, T, A: Allocator + Clone> {
+    head: Option<ElementPtr<T>>,
+    marker: PhantomData<(&'a UnsafeSinglyLinkedList<T, A>, A)>,
 }
 
-pub struct SLLBucketIter<'a, K, V, A: Allocator + Clone> {
-    head: Option<ElementPtr<(K, V)>>,
-    marker: PhantomData<(&'a UnsafeSinglyLinkedList<(K, V), A>, A)>,
-}
-
-impl<'a, K: 'a, V: 'a, A: Allocator + Clone> Iterator for SLLBucketIter<'a, K, V, A> {
-    type Item = &'a (K, V);
+impl<'a, T: 'a, A: Allocator + Clone> Iterator for SLLBucketIter<'a, T, A> {
+    type Item = &'a T;
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(s) = self.head {
             unsafe {
@@ -147,16 +177,16 @@ impl<'a, K: 'a, V: 'a, A: Allocator + Clone> Iterator for SLLBucketIter<'a, K, V
     }
 }
 
-pub struct SLLBucketDrain<'a, K, V, A: Allocator + Clone> {
-    head: &'a mut Option<ElementPtr<(K, V)>>,
+pub struct SLLBucketDrain<'a, T, A: Allocator + Clone> {
+    head: &'a mut Option<ElementPtr<T>>,
     alloc: A,
 }
 
-impl<'a, K, V, A> Iterator for SLLBucketDrain<'a, K, V, A>
+impl<'a, T, A> Iterator for SLLBucketDrain<'a, T, A>
 where
     A: Allocator + Clone,
 {
-    type Item = (K, V);
+    type Item = T;
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(s) = self.head {
             let a = *s;
@@ -177,10 +207,7 @@ pub struct SinglyLinkedListNode<T> {
 impl<T> SinglyLinkedListNode<T> {
     /// # Safety
     /// the caller is in charge of deallocation
-    pub unsafe fn ptr_to_new<A: Allocator>(
-        item: T,
-        alloc: A,
-    ) -> Result<ElementPtr<T>, AllocError> {
+    pub unsafe fn ptr_to_new<A: Allocator>(item: T, alloc: A) -> Result<ElementPtr<T>, AllocError> {
         let layout = Layout::new::<Self>();
         let ptr = alloc.allocate(layout)?.cast();
         let i = Self {

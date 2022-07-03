@@ -1,5 +1,6 @@
-use alloc::boxed::Box;
+use crate::prelude::*;
 
+use alloc::boxed::Box;
 use core::{
     alloc::{AllocError, Allocator},
     fmt::{self, Debug, Display, Formatter},
@@ -132,24 +133,6 @@ impl<T, A: Allocator + Clone> SinglyLinkedList<T, A> {
             Some(&c.value)
         } else {
             None
-        }
-    }
-
-    pub fn iter(&self) -> Iter<'_, T, A> {
-        Iter { node: &self.head }
-    }
-
-    pub fn drain(&mut self) -> Drain<'_, T, A> {
-        let item = self.head.take();
-        Drain {
-            head_ref: &mut self.head,
-            item_ref: item,
-        }
-    }
-
-    pub fn iter_mut(&mut self) -> IterMut<'_, T, A> {
-        IterMut {
-            node: Some(&mut self.head),
         }
     }
 }
@@ -319,39 +302,39 @@ impl<K: Eq, V, A: Allocator + Clone> Bucket<K, V, A> for SinglyLinkedList<(K, V)
     }
 }
 
-/*
-impl<'a,K,V,A> BucketIter<'a, K, V, A> for SinglyLinkedList<(K,V), A>
-where
-    K: Eq + Hash + 'a,
-    V: 'a,
-    A: 'a,
-    A: Allocator + Clone,
-{
-    type Iter = iters::Iter<'a, (K,V),A>;
-    fn iter(&'a self) -> Self::Iter {
-        self.iter().map(|(k,v)| (k,v))
+impl<T, A: Allocator + Clone> Iterable for SinglyLinkedList<T, A> {
+    type Item = T;
+    type Iter<'a> = iters::Iter<'a, T,A>
+    where
+        T: 'a, A: 'a;
+    fn iter<'a>(&'a self) -> Self::Iter<'a> {
+        Iter { node: &self.head }
     }
 }
 
-pub trait BucketIterMut<'a, K, V, A>: Bucket<K, V, A>
-where
-    V: 'a,
-    K: Eq + Hash + 'a,
-    A: Allocator + Clone + 'a,
-{
-    type IterMut: Iterator<Item = (&'a mut K, &'a mut V)>;
-    fn iter_mut(&mut self) -> Self::IterMut;
-}*/
+impl<T, A: Allocator + Clone> IterableMut for SinglyLinkedList<T, A> {
+    type Item = T;
+    type IterMut<'a> = iters::IterMut<'a, T,A>
+    where
+        T: 'a, A: 'a;
+    fn iter_mut<'a>(&'a mut self) -> Self::IterMut<'a> {
+        IterMut {
+            node: Some(&mut self.head),
+        }
+    }
+}
 
-impl<'a, K, V, A> BucketDrain<'a, K, V, A> for SinglyLinkedList<(K, V), A>
-where
-    Self: 'a,
-    K: Eq,
-    A: Allocator + Clone,
-{
-    type DrainIter = iters::Drain<'a, (K, V), A>;
-    fn drain(&'a mut self) -> Self::DrainIter {
-        self.drain()
+impl<T, A: Allocator + Clone> Drainable for SinglyLinkedList<T, A> {
+    type Item = T;
+    type Drain<'a> = iters::Drain<'a, T,A>
+    where
+        T: 'a, A: 'a;
+    fn drain<'a>(&'a mut self) -> Self::Drain<'a> {
+        let item = self.head.take();
+        Drain {
+            head_ref: &mut self.head,
+            item_ref: item,
+        }
     }
 }
 
@@ -391,9 +374,9 @@ mod bench {
 
 #[cfg(test)]
 mod tests {
-    use super::SinglyLinkedList;
+    use super::*;
     use alloc::alloc::Global;
-    
+
     #[test]
     fn new_and_insert() {
         let mut a = SinglyLinkedList::new();

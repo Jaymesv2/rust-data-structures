@@ -17,6 +17,73 @@ where
     fn remove(&mut self, key: &K) -> Option<(K, V)>;
 }
 
+use crate::traits::iter::*;
+pub trait BucketIter<'a, K, V, A>: Bucket<K, V, A> + Iterable<Item = (K, V)>
+where
+    K: Eq + Hash + 'a,
+    V: 'a,
+    A: Allocator + Clone,
+{
+}
+// todo: iter mut and drain should be combined
+pub trait BucketIterMut<'a, K, V, A>:
+    Bucket<K, V, A> + Iterable<Item = (K, V)> + IterableMut
+where
+    V: 'a,
+    K: Eq + Hash + 'a,
+    A: Allocator + Clone + 'a,
+{
+}
+
+pub trait BucketDrain<'a, K, V, A>: Bucket<K, V, A> + Drainable<Item = (K, V)>
+where
+    Self: 'a,
+    K: Eq,
+    A: Allocator + Clone,
+{
+}
+
+impl<'a, B, K, V, A> BucketDrain<'a, K, V, A> for B
+where
+    Self: 'a,
+    B: Drainable<Item = (K, V)> + Bucket<K, V, A>,
+    K: Eq,
+    A: Allocator + Clone,
+{
+}
+impl<'a, B, K, V, A> BucketIter<'a, K, V, A> for B
+where
+    Self: 'a,
+    B: Iterable<Item = (K, V)> + Bucket<K, V, A>,
+    K: Eq + Hash + 'a,
+    V: 'a,
+    A: Allocator + Clone,
+{
+}
+impl<'a, B, K, V, A> BucketIterMut<'a, K, V, A> for B
+where
+    Self: 'a,
+    B: Iterable<Item = (K, V)> + IterableMut + Bucket<K, V, A>,
+    K: Eq + Hash + 'a,
+    V: 'a,
+    A: Allocator + Clone + 'a,
+{
+}
+
+/*
+impl<'a, K, V, A> BucketIter<'a, K, V, A> for SinglyLinkedList<(K, V), A>
+where
+    Self: 'a,
+    K: Eq + Hash,
+    A: Allocator + Clone,{}
+
+impl<'a, K, V, A> BucketIterMut<'a, K, V, A> for SinglyLinkedList<(K, V), A>
+where
+    Self: 'a,
+    K: Eq + Hash,
+    A: Allocator + Clone,{}
+*/
+/*
 pub trait BucketIter<'a, K, V, A>: Bucket<K, V, A>
 where
     K: Eq + Hash + 'a,
@@ -46,4 +113,4 @@ where
 {
     type DrainIter: 'a + Iterator<Item = (K, V)>;
     fn drain(&'a mut self) -> Self::DrainIter;
-}
+}*/

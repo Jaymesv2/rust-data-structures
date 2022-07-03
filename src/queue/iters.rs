@@ -1,4 +1,3 @@
-
 use super::ArrayQueue;
 use alloc::alloc::Global;
 use core::{alloc::Allocator, iter::FusedIterator, mem::transmute, ptr};

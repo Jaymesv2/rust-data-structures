@@ -1,3 +1,4 @@
+use crate::prelude::*;
 use alloc::{alloc::Global, string::String, vec::Vec};
 use core::{
     alloc::{AllocError, Allocator, Layout},
@@ -7,7 +8,6 @@ use core::{
     ops::{Index, IndexMut},
     ptr::{self, drop_in_place, NonNull},
 };
-use crate::prelude::*;
 mod iters;
 use iters::*;
 
@@ -405,25 +405,32 @@ where
     }*/
 }
 
-
-impl<T,A: Allocator> Iterable for ArrayQueue<T,A> {
+impl<T, A: Allocator> Iterable for ArrayQueue<T, A> {
     type Iter<'a> = Iter<'a, T,A> where Self: 'a;
     type Item = T;
-    
+
     fn iter(&self) -> Self::Iter<'_> {
-        Iter { inner: self, current_ind: 0, remaining: self.len }
+        Iter {
+            inner: self,
+            current_ind: 0,
+            remaining: self.len,
+        }
     }
 }
 
-impl<T,A: Allocator> IterableMut for ArrayQueue<T,A> {
+impl<T, A: Allocator> IterableMut for ArrayQueue<T, A> {
     type IterMut<'a> = IterMut<'a, T, A> where T: 'a, A: 'a;
     type Item = T;
     fn iter_mut<'a>(&'a mut self) -> Self::IterMut<'a> {
-        IterMut { current_ind: 0, remaining: self.len, inner: self }
+        IterMut {
+            current_ind: 0,
+            remaining: self.len,
+            inner: self,
+        }
     }
 }
 
-impl<T,A: Allocator> Drainable for ArrayQueue<T,A> {
+impl<T, A: Allocator> Drainable for ArrayQueue<T, A> {
     type Drain<'a> = Drain<'a, T,A> where Self: 'a;
     type Item = T;
     fn drain<'a>(&'a mut self) -> Self::Drain<'a> {
@@ -441,7 +448,7 @@ impl<T, A: Allocator + Clone> IntoIterator for ArrayQueue<T, A> {
     type IntoIter = IntoIter<T, A>;
     type Item = T;
     fn into_iter(self) -> Self::IntoIter {
-        IntoIter {inner: self}
+        IntoIter { inner: self }
     }
 }
 

@@ -7,7 +7,7 @@ use core::{
     ops::{Index, IndexMut},
     ptr::{self, drop_in_place, NonNull},
 };
-use crate::traits::iter::*;
+use crate::prelude::*;
 mod iters;
 use iters::*;
 

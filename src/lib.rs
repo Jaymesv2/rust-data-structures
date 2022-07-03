@@ -18,6 +18,8 @@ extern crate test;
 
 extern crate alloc;
 
+pub mod prelude;
+
 pub mod hash_table;
 pub mod linked_lists;
 pub mod queue;

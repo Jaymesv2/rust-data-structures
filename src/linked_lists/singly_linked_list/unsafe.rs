@@ -7,7 +7,7 @@ use core::{
     ptr::{self, drop_in_place, NonNull},
 };
 
-use crate::traits::hash_table::seperate_chaining::bucket::*;
+use crate::traits::hash_table::seperate_chaining::*;
 
 pub type ElementPtr<T> = NonNull<SinglyLinkedListNode<T>>;
 

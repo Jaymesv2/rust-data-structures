@@ -9,7 +9,7 @@ use core::{
     ops::{Deref, DerefMut},
 };
 
-use crate::traits::hash_table::seperate_chaining::bucket::*;
+use crate::traits::hash_table::seperate_chaining::*;
 
 pub mod r#unsafe;
 

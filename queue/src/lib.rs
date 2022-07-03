@@ -1,6 +1,6 @@
-#![no_std]
+#![cfg_attr(not(test), no_std)]
 #![feature(generic_associated_types, allocator_api, const_option, let_chains)]
-#![warn(unsafe_code)]
+//#![warn(unsafe_code)]
 
 extern crate alloc;
 use alloc::{alloc::Global, string::String, vec::Vec};
@@ -17,7 +17,10 @@ use iters::*;
 /// small vecdeque implementation
 ///
 /// use `push_back` to add to the queue and `pop_front` to remove
-pub struct ArrayQueue<T, A: Allocator = Global> {
+pub struct ArrayQueue<T, A = Global>
+where
+    A: Allocator,
+{
     len: usize,
     capacity: usize,
     start: usize,
@@ -36,7 +39,10 @@ impl<T> ArrayQueue<T, Global> {
         Self::with_capacity_in(capacity, Global).expect("failed to allocate")
     }
 }
-impl<T, A: Allocator> ArrayQueue<T, A> {
+impl<T, A> ArrayQueue<T, A>
+where
+    A: Allocator,
+{
     pub fn new_in(alloc: A) -> Self {
         ArrayQueue {
             len: 0,
@@ -80,7 +86,9 @@ impl<T, A: Allocator> ArrayQueue<T, A> {
         }
     }
 
-    /// # SAFETY
+    /// Copies the elements from self to `new_ptr`
+    ///
+    /// # Safety
     /// First, `new_ptr` have a layout of `Layout::array::<T>(capacity)` where `capacity` must be greater than or equal to the capacity than the current capacity a
     /// Second, `new_ptr` cannot be equal to `self.ptr`
     unsafe fn copy_elements_to(&self, new_ptr: NonNull<T>) {
@@ -128,52 +136,44 @@ impl<T, A: Allocator> ArrayQueue<T, A> {
         self.ptr = new_ptr;
         Ok(())
     }
-    /// add to the back of the queue
+
+    /// Add to the back of the queue
     pub fn push_back(&mut self, item: T) -> Result<(), AllocError> {
         if self.len + 1 > self.capacity {
             self.grow()?;
         }
-        unsafe {ptr::write(self.ptr_to_mut(self.len), item)}
-        /*unsafe {
-            let push_ptr = self
-                .ptr
-                .as_ptr()
-                .add((self.start + self.len) % self.capacity);
-            ptr::write(push_ptr, item);
-        }*/
+        unsafe { ptr::write(self.ptr_to_mut(self.len), item) }
         self.len += 1;
         Ok(())
     }
-
+    /// Adds and element to the front of the queue
     pub fn push_front(&mut self, item: T) -> Result<(), AllocError> {
         if self.len + 1 > self.capacity {
             self.grow()?;
         }
         self.start = self.start.checked_sub(1).unwrap_or(self.capacity - 1);
-        unsafe {ptr::write(self.ptr_to_mut(0), item)}
-        /*unsafe {
-            let push_ptr = self.ptr.as_ptr().add(self.start);
-            ptr::write(push_ptr, item);
-        };*/
+        unsafe { ptr::write(self.ptr_to_mut(0), item) }
         self.len += 1;
         Ok(())
     }
-
+    /// removes the element at the back of the queue.
+    /// # Examples
+    /// ```
+    /// use queue::ArrayQueue;
+    /// let mut queue: ArrayQueue<usize> = (0..10).collect();
+    /// for i in (0..10).rev() {
+    ///     assert_eq!(queue.pop_back(), Some(i));
+    /// }
+    /// assert!(queue.is_empty());
+    /// ```
     pub fn pop_back(&mut self) -> Option<T> {
         (self.len != 0).then(|| {
             self.len -= 1;
-            unsafe {ptr::read::<T>(self.ptr_to(self.len))}
-            /*unsafe {
-                ptr::read::<T>(
-                    self.ptr
-                        .as_ptr()
-                        .add((self.start + self.len) % self.capacity),
-                )
-            }*/
+            unsafe { ptr::read::<T>(self.ptr_to(self.len)) }
         })
     }
 
-    // remove from the front
+    /// remove from the front of the queue.
     pub fn pop_front(&mut self) -> Option<T> {
         (self.len != 0).then(|| {
             let item = unsafe { ptr::read(self.ptr_to(0)) };
@@ -182,6 +182,15 @@ impl<T, A: Allocator> ArrayQueue<T, A> {
             item
         })
     }
+    /// Drops all elements in the queue leaving it empty.
+    /// # Examples
+    /// ```
+    /// use queue::ArrayQueue;
+    /// let mut queue: ArrayQueue<usize> = (0..10).collect();
+    /// assert_eq!(queue.len(), 10);
+    /// queue.clear();
+    /// assert!(queue.is_empty());
+    /// ```
     pub fn clear(&mut self) {
         self.iter_mut().for_each(|ptr| unsafe {
             drop_in_place(ptr);
@@ -190,27 +199,59 @@ impl<T, A: Allocator> ArrayQueue<T, A> {
         self.start = 0;
     }
 
+    /// Gets a reference to the element at `index`.
+    /// # Examples
+    /// ```
+    /// use queue::ArrayQueue;
+    /// let mut queue: ArrayQueue<usize> = (0..10).collect();
+    /// assert_eq!(queue.get(5), Some(&5));
+    /// ```
     pub fn get(&self, index: usize) -> Option<&T> {
-        (index <= self.len).then(|| unsafe { self.get_unchecked(index) })
-    }
-    
-    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
-        (index <= self.len).then(|| unsafe { self.get_unchecked_mut(index) })
+        (index < self.len).then(|| unsafe { self.get_unchecked(index) })
     }
 
+    /// Gets a mutable reference to the element at `index`
+    /// # Examples
+    /// ```
+    /// use queue::ArrayQueue;
+    /// let mut queue: ArrayQueue<usize> = (0..10).collect();
+    /// if let Some(s) = queue.get_mut(5) {
+    ///     *s += 10;
+    /// }
+    /// assert_eq!(queue.get(5), Some(&15));
+    /// ```
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
+        (index < self.len).then(|| unsafe { self.get_unchecked_mut(index) })
+    }
+
+    /// Gets a reference to the element at `index` without checking bounds.
+    ///
+    /// # Safety
+    /// `index` must be less than `self.index`
     pub unsafe fn get_unchecked(&self, index: usize) -> &T {
         &*self.ptr_to(index)
     }
 
+    /// Gets a mutable reference to the element at `index` without checking bounds.
+    ///
+    /// # Safety
+    /// `index` must be less than `self.index`
     pub unsafe fn get_unchecked_mut(&mut self, index: usize) -> &mut T {
         &mut *self.ptr_to_mut(index)
     }
 
-    // gets a pointer to the nth element 
+    /// gets a pointer to the element at the specified index.
+    ///
+    /// # Safety
+    /// `index` must be less than `self.index`
     unsafe fn ptr_to(&self, index: usize) -> *const T {
         self.ptr.as_ptr().add((self.start + index) % self.capacity)
     }
 
+    /// gets a mutable pointer to the element at the specified index.
+    ///
+    /// # Safety
+    /// `index` must be less than `self.index`
     unsafe fn ptr_to_mut(&mut self, index: usize) -> *mut T {
         self.ptr.as_ptr().add((self.start + index) % self.capacity)
     }
@@ -287,11 +328,11 @@ impl<T, A: Allocator> ArrayQueue<T, A> {
     }
 
     pub fn back(&self) -> Option<&T> {
-        self.get(self.len())
+        self.get(self.len() - 1)
     }
 
     pub fn back_mut(&mut self) -> Option<&mut T> {
-        self.get_mut(self.len())
+        self.get_mut(self.len() - 1)
     }
 
     pub fn len(&self) -> usize {
@@ -436,7 +477,7 @@ impl<T, A: Allocator + Clone> From<Vec<T, A>> for ArrayQueue<T, A> {
 mod iters {
     use super::ArrayQueue;
     use alloc::alloc::Global;
-    use core::{alloc::Allocator, iter::FusedIterator, ptr, mem::transmute};
+    use core::{alloc::Allocator, iter::FusedIterator, mem::transmute, ptr};
 
     pub struct Iter<'a, T, A: Allocator = Global> {
         inner: &'a ArrayQueue<T, A>,
@@ -460,7 +501,7 @@ mod iters {
             (self.remaining != 0).then(|| {
                 self.remaining -= 1;
                 self.current_ind += 1;
-                unsafe { self.inner.get_unchecked(self.current_ind-1) }
+                unsafe { self.inner.get_unchecked(self.current_ind - 1) }
             })
         }
 
@@ -510,7 +551,7 @@ mod iters {
                 self.remaining -= 1;
                 self.current_ind += 1;
                 // the transmute makes the lifetimes happy
-                unsafe { transmute(self.inner.get_unchecked_mut(self.current_ind-1)) }
+                unsafe { transmute(self.inner.get_unchecked_mut(self.current_ind - 1)) }
             })
         }
 
@@ -559,10 +600,10 @@ mod iters {
         type Item = T;
         fn next(&mut self) -> Option<Self::Item> {
             (self.len != 0).then(|| {
-                let ptr = unsafe { self.inner.ptr.as_ptr().add(self.start) };
+                let elem = unsafe { ptr::read(self.inner.ptr.as_ptr().add(self.start)) };
                 self.start = (self.start + 1) % (self.inner.capacity);
                 self.len -= 1;
-                unsafe { ptr::read(ptr) }
+                elem
             })
         }
 
@@ -576,8 +617,12 @@ mod iters {
             (self.len != 0).then(|| {
                 self.len -= 1;
                 unsafe {
-                    let ind = (self.start + self.len) % self.inner.capacity;
-                    ptr::read(self.inner.ptr.as_ptr().add(ind))
+                    ptr::read(
+                        self.inner
+                            .ptr
+                            .as_ptr()
+                            .add((self.start + self.len) % self.inner.capacity),
+                    )
                 }
             })
         }
@@ -637,6 +682,7 @@ mod iters {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use core::ops::Range;
     #[test]
     fn queue_new() {
         let _queue: ArrayQueue<i32> =
@@ -797,5 +843,58 @@ mod tests {
         let v2 = (25..30).collect::<Vec<_>>();
         assert_eq!(fst, &v1);
         assert_eq!(snd, &v2);
+    }
+
+    #[test]
+    fn get() {
+        const RANGE: Range<usize> = 0..100;
+        let queue: ArrayQueue<usize> = (RANGE).collect();
+        for i in RANGE {
+            assert_eq!(i, *queue.get(i).unwrap())
+        }
+    }
+
+    #[test]
+    fn get2() {
+        let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(25);
+        queue.extend(0..25);
+        queue.drain().take(15).for_each(drop);
+        queue.extend(25..40);
+
+        for i in 0..25 {
+            assert_eq!(i + 15, *queue.get(i).unwrap())
+        }
+    }
+
+    #[test]
+    fn order() {
+        let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(25);
+        queue.extend(0..25);
+        queue.drain().take(15).for_each(drop);
+        queue.extend(25..40);
+
+        for _ in 0..25 {
+            let a = *queue.get(0).unwrap();
+            let b = *queue.front().unwrap();
+            let popped = queue.pop_front().unwrap();
+            assert_eq!(a, b);
+            assert_eq!(a, popped);
+        }
+    }
+
+    #[test]
+    fn order2() {
+        let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(25);
+        queue.extend(0..25);
+        queue.drain().take(15).for_each(drop);
+        queue.extend(25..40);
+        println!("{queue:?}");
+        for _ in 0..25 {
+            let a = *queue.get(queue.len() - 1).unwrap();
+            let b = *queue.back().unwrap();
+            let popped = queue.pop_back().unwrap();
+            assert_eq!(a, b);
+            assert_eq!(b, popped);
+        }
     }
 }

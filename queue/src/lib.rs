@@ -283,6 +283,35 @@ where
         self.start = 0;
         unsafe {core::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.len)}
     }
+    
+    pub fn insert(&mut self, index: usize, value: T) {
+        if index > self.len {
+            return;
+        }
+        todo!()
+    }
+
+    pub fn remove(&mut self, index: usize) -> Option<T> {
+        if index > self.len {
+            return None;
+        }
+        let elem = unsafe {ptr::read(self.ptr_to(index))};
+        // move all the other elements
+        // if there are 2 segments
+        if self.start + self.len > self.capacity {
+            todo!()
+        } else {
+            let num_to_move = self.len - index-1;
+
+            unsafe {
+                ptr::copy(self.ptr_to(index+1), self.ptr_to_mut(index), num_to_move);
+            }
+        }
+        self.len -= 1;
+        
+
+        Some(elem)
+    }
 
     pub fn shrink_to_fit(&mut self) -> Result<(), AllocError> {
         self.shrink_to(self.len)
@@ -319,13 +348,6 @@ where
                 a
             })
         })
-    }
-
-    pub fn insert(&mut self, index: usize, value: T) {
-        todo!()
-    }
-    pub fn remove(&mut self, index: usize) -> Option<T> {
-        todo!()
     }
 
     pub fn front(&self) -> Option<&T> {
@@ -696,19 +718,29 @@ mod iters {
     impl<'a, T: 'a, A: Allocator> FusedIterator for IntoIter<T, A> {}
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(miri)))]
 mod bench {
     use super::*;
     use test::Bencher;
 
     #[bench]
     fn create_insert_100_bench(b: &mut Bencher) {
-        
         b.iter(|| {
-            let mut a = ArrayQueue::new();
+            let mut a = ArrayQueue::with_capacity(100);
             for i in 0..100 {
                 a.push_back(i).expect("alloc failed");
             }
+        });
+    }
+    
+    #[bench]
+    fn create_insert_100_drain_bench(b: &mut Bencher) {
+        b.iter(|| {
+            let mut a = ArrayQueue::with_capacity(100);
+            for i in 0..100 {
+                a.push_back(i).expect("alloc failed");
+            }
+            a.drain().for_each(drop)
         });
     }
 }
@@ -961,4 +993,25 @@ mod tests {
         let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(50);
         queue.extend(iter::repeat(0).take(10000));
     }
+
+    #[test]
+    fn remove_single() {
+        let mut queue: ArrayQueue<usize> = (0..10).collect();
+        assert_eq!(queue.remove(5), Some(5));
+        let a = queue.make_contiguous();
+        assert_eq!(a, &[0,1,2,3,4,6,7,8,9])
+    }
+
+    #[test]
+    fn remove_double() {
+        let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(10);
+        queue.extend(iter::repeat(0).take(5));
+        queue.drain().take(5).for_each(drop);
+        queue.extend(0..9);
+        assert_eq!(queue.remove(5), Some(5));
+
+        let a = queue.make_contiguous();
+        assert_eq!(a, &[0,1,2,3,4,6,7,8])
+    }
+
 }

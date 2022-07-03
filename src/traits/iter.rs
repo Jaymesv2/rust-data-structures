@@ -44,16 +44,6 @@ pub trait DrainableRange {
         R: RangeBounds<usize>;
 }
 
-pub trait RetainBy {
-    type Item;
-    type Retain<'a, F>: Iterator<Item = Self::Item> + 'a
-    where
-        Self: 'a;
-    fn retain_by<'a, F>(&'a mut self, f: F) -> Self::Retain<'a, F>
-    where
-        F: FnMut(&Self::Item) -> bool;
-}
-
 pub trait RetainRange {
     type Item;
     type Retain<'a>: Iterator<Item = Self::Item> + 'a
@@ -69,11 +59,14 @@ mod impls {
 
     use super::*;
     use crate::prelude::*;
-    use alloc::vec::Vec;
+    use alloc::vec::{Vec, self};
+    use alloc::collections::*;
+    use alloc::slice;
 
+    // vec
     impl<T> Iterable for Vec<T> {
         type Item = T;
-        type Iter<'a> = alloc::slice::Iter<'a, T> where T: 'a;
+        type Iter<'a> = slice::Iter<'a, T> where T: 'a;
         fn iter<'a>(&'a self) -> Self::Iter<'a> {
             self.deref().iter()
         }
@@ -81,7 +74,7 @@ mod impls {
 
     impl<T> IterableMut for Vec<T> {
         type Item = T;
-        type IterMut<'a> = alloc::slice::IterMut<'a ,T> where T: 'a;
+        type IterMut<'a> = slice::IterMut<'a ,T> where T: 'a;
         fn iter_mut<'a>(&'a mut self) -> Self::IterMut<'a> {
             self.deref_mut().iter_mut()
         }
@@ -89,9 +82,57 @@ mod impls {
 
     impl<T, A: Allocator> Drainable for Vec<T, A> {
         type Item = T;
-        type Drain<'a> = alloc::vec::Drain<'a, T, A> where T: 'a, A: 'a;
+        type Drain<'a> = vec::Drain<'a, T, A> where T: 'a, A: 'a;
         fn drain<'a>(&'a mut self) -> Self::Drain<'a> {
             self.drain(..)
+        }
+    }
+
+    impl<T> Iterable for VecDeque<T> {
+        type Item = T;
+        type Iter<'a> = vec_deque::Iter<'a, T> where T: 'a;
+        fn iter<'a>(&'a self) -> Self::Iter<'a> {
+            self.iter()
+        }
+    }
+
+    impl<T> IterableMut for VecDeque<T> {
+        type Item = T;
+        type IterMut<'a> = vec_deque::IterMut<'a ,T> where T: 'a;
+        fn iter_mut<'a>(&'a mut self) -> Self::IterMut<'a> {
+            self.iter_mut()
+        }
+    }
+
+    impl<T, A: Allocator> Drainable for VecDeque<T, A> {
+        type Item = T;
+        type Drain<'a> = vec_deque::Drain<'a, T, A> where T: 'a, A: 'a;
+        fn drain<'a>(&'a mut self) -> Self::Drain<'a> {
+            self.drain(..)
+        }
+    }
+
+    impl<T> Iterable for LinkedList<T> {
+        type Item = T;
+        type Iter<'a> = linked_list::Iter<'a, T> where T: 'a;
+        fn iter<'a>(&'a self) -> Self::Iter<'a> {
+            self.iter()
+        }
+    }
+
+    impl<T> IterableMut for LinkedList<T> {
+        type Item = T;
+        type IterMut<'a> = linked_list::IterMut<'a ,T> where T: 'a;
+        fn iter_mut<'a>(&'a mut self) -> Self::IterMut<'a> {
+            self.iter_mut()
+        }
+    }
+
+    impl<T> Iterable for BTreeSet<T> {
+        type Item = T;
+        type Iter<'a> = btree_set::Iter<'a, T> where T: 'a;
+        fn iter<'a>(&'a self) -> Self::Iter<'a> {
+            self.iter()
         }
     }
 }

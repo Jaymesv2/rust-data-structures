@@ -1,17 +1,17 @@
+use alloc::alloc::Global;
+use alloc::vec::Vec;
+use core::alloc::Allocator;
 use core::fmt::{Binary, Debug, Formatter};
 use core::ops::*;
-use core::alloc::Allocator;
-use alloc::vec::Vec;
-use alloc::alloc::Global;
 
-// used to work with endianness 
+// used to work with endianness
 const SHIFT_OP: &dyn Fn(u8, usize) -> u8 = if cfg!(target_endian = "little") {
     &core::ops::Shl::shl
 } else {
     &core::ops::Shr::shr
 };
 #[repr(transparent)]
-#[derive(Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 struct BitContainer(u8);
 
 impl BitContainer {
@@ -33,12 +33,12 @@ impl BitContainer {
         self.0 ^= SHIFT_OP(1, index % 8)
     }
 }
-
+/*
 impl Debug for BitContainer {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         write!(f, "{:?}", self.0)
     }
-}
+} */
 impl Binary for BitContainer {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         write!(f, "{:b}", self.0)
@@ -52,26 +52,34 @@ impl Deref for BitContainer {
     }
 }
 
-pub struct BitString<A: Allocator=Global> {
+pub struct BitString<A: Allocator = Global> {
     data: Vec<BitContainer, A>,
     len: usize,
 }
 
 impl BitString {
     pub fn new() -> Self {
-        Self { data: Default::default(), len: 0 }
+        Self {
+            data: Default::default(),
+            len: 0,
+        }
     }
 }
 
 impl<A: Allocator> BitString<A> {
     pub fn iter(&self) -> BitStringIterator<'_> {
-        BitStringIterator { inner: self.data.as_slice(), idx: 0 }
+        BitStringIterator {
+            inner: self.data.as_slice(),
+            idx: 0,
+        }
     }
     pub fn iter_mut(&mut self) -> BitStringIteratorMut<'_> {
-        BitStringIteratorMut { inner: self.data.as_mut_slice(), idx: 0 }
+        BitStringIteratorMut {
+            inner: self.data.as_mut_slice(),
+            idx: 0,
+        }
     }
 }
-
 
 pub struct FixedBitString<const N: usize> {
     inner: [BitContainer; N],
@@ -147,7 +155,6 @@ impl<const N: usize> FixedBitString<N> {
         self.inner[idx..idx + slice.len()].copy_from_slice(slice);
     }
 }
-
 
 impl<const N: usize> Debug for FixedBitString<N> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {

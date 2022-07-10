@@ -259,7 +259,25 @@ where
     pub fn make_contiguous(&mut self) -> &mut [T] {
         // 2 slices
         if self.start + self.len > self.capacity {
-            todo!()
+            unsafe {
+                // this is terrible
+                self.grow_to(NonZeroUsize::new_unchecked(self.capacity))
+                    .unwrap();
+            }
+            /*
+
+            let dist = self.start;
+            let count = (self.start + self.len) % self.capacity;
+            for i in 0..count {
+                unsafe {
+                    ptr::swap(self.ptr.as_ptr().add(i),self.ptr.as_ptr().add(dist+i));
+                }
+            }
+            unsafe {
+                let a = self.len - count;
+                ptr::copy(self.ptr.as_ptr().add(dist+count), self.ptr.as_ptr().add(), a);
+            }
+            todo!() */
             /*let end = (self.start+self.len())%self.capacity;
             let snd_len = self.len - end;
 
@@ -289,38 +307,63 @@ where
         let real_index = (self.start + index) % self.capacity;
         let ptr = self.ptr.as_ptr();
 
-        // will end up with 2 segments
-        // |--ABCDEFG|
-        if self.start + self.len >= self.capacity {
-            // in first segment
-            let elems_at_front = (self.start+self.len)%self.capacity;
-            if self.len > self.capacity - self.start {
-                
-            }
-            // move front elems to 
-            if elems_at_front != 0 {
-                unsafe {
-                    ptr::copy(ptr, ptr.add(1), elems_at_front);
-                }
-            }
-            unsafe {
-                // this might be non overlapping
-                // move back element to front
-                ptr::copy(ptr.add(self.capacity-1), ptr, 1);
-            }
-        } 
+        // this is only here so that the debugger can see the slice.
+        //#[cfg(test)]
+        //let a = unsafe { core::slice::from_raw_parts(ptr, self.capacity) };
+        /*
+            if there will be 2 segments then
+                if the real index is in the second segment (the one at the "front" of the ring) then
+                    move the elements in front forward.
+                else if the real index is in the first segment("back of the ring") then
+                    move the front elements forward, copy the back elem to front
+                    if real index is not at the end of the buffer then
+                        copy remaining elements after the real index forward
+                    end
+                end
+            else
+                copy elements after real index forward.
 
+            write to real index.
+        */
+
+        // 2 segments
+        // its one big unsafe block since its just copies and ifs 
         unsafe {
-            ptr::copy(
+            if self.start + real_index >= self.capacity {
+                // in the second segment (front of buf)
+                if real_index > (self.start + self.len) % self.capacity {
+                    // move the elems at the front forward
+                    ptr::copy(
+                        ptr,
+                        ptr.add(1),
+                        //self.len - index,
+                        (self.start + self.len) % self.capacity, // # elems at front
+                    );
+                    // this might be non overlapping
+                    // move back element to front
+                    ptr::copy_nonoverlapping(ptr.add(self.capacity - 1), ptr, 1);
+                    if real_index + 1 != self.capacity {
+                        ptr::copy(
+                            ptr.add(real_index),
+                            ptr.add(real_index + 1),
+                            self.capacity.saturating_sub(real_index).saturating_sub(1),
+                        );
+                    }
+                // in the first segment (back of buf)
+                }
+            // one segment
+            } else {
+                ptr::copy(
                     ptr.add(real_index),
                     ptr.add(real_index + 1),
                     self.len - index,
-                    //core::cmp::min(self.len, self.capacity - self.start)-1
-            );
+                );
+            }
             ptr::write(ptr.add(real_index), value);
-        }
-        self.len += 1;
+        } 
         
+        self.len += 1;
+
         Ok(())
     }
 
@@ -905,11 +948,13 @@ mod tests {
         let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(10);
         queue.extend(iter::repeat(0).take(5));
         queue.drain().take(5).for_each(drop);
-        queue.extend(0..4);
+        queue.extend(1..5);
         println!("{queue:?}");
-        queue.insert(4, 4).expect("failed to alloc");
+        let u: (&[usize], &[usize]) = (&[1, 2, 3, 4], &[]);
+        assert_eq!(queue.as_slices(), u);
+        queue.insert(4, 99).expect("failed to alloc");
         println!("{queue:?}");
-        let r: (&[usize], &[usize]) = (&[0, 1, 2, 3, 4], &[]);
+        let r: (&[usize], &[usize]) = (&[1, 2, 3, 4, 99], &[]);
         assert_eq!(queue.as_slices(), r)
     }
 
@@ -920,9 +965,11 @@ mod tests {
         queue.drain().take(5).for_each(drop);
         queue.extend(1..6);
         println!("{queue:?}");
-        queue.insert(0, 0).expect("failed to alloc");
+        let u: (&[usize], &[usize]) = (&[1, 2, 3, 4, 5], &[]);
+        assert_eq!(queue.as_slices(), u);
+        queue.insert(0, 99).expect("failed to alloc");
         println!("{queue:?}");
-        let r: (&[usize], &[usize]) = (&[0, 1, 2, 3, 4], &[5]);
+        let r: (&[usize], &[usize]) = (&[99, 1, 2, 3, 4], &[5]);
         assert_eq!(queue.as_slices(), r)
     }
     #[test]
@@ -930,12 +977,78 @@ mod tests {
         let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(10);
         queue.extend(iter::repeat(0).take(5));
         queue.drain().take(5).for_each(drop);
-        queue.extend(0..5);
+        queue.extend(1..6);
         println!("{queue:?}");
-        queue.insert(5, 5).expect("failed to alloc");
+        let u: (&[usize], &[usize]) = (&[1, 2, 3, 4, 5], &[]);
+        assert_eq!(queue.as_slices(), u);
+        queue.insert(5, 99).expect("failed to alloc");
         println!("{queue:?}");
-        let a = queue.into_iter().collect::<Vec<_>>();
-        assert_eq!(&a, &[0, 1, 2, 3, 4, 5])
+        let r: (&[usize], &[usize]) = (&[1, 2, 3, 4, 5], &[99]);
+        assert_eq!(queue.as_slices(), r);
+    }
+
+    #[test]
+    fn insert_double() {
+        let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(10);
+        queue.extend(iter::repeat(0).take(5));
+        queue.drain().take(5).for_each(drop);
+        queue.extend(1..7);
+        println!("{queue:?}");
+        let u: (&[usize], &[usize]) = (&[1, 2, 3, 4, 5], &[6]);
+        assert_eq!(queue.as_slices(), u);
+        queue.insert(3, 99).expect("failed to alloc");
+        println!("{queue:?}");
+        let r: (&[usize], &[usize]) = (&[1, 2, 3, 99, 4], &[5, 6]);
+        let s = queue.as_slices();
+        assert_eq!(s, r);
+    }
+
+    #[test]
+    fn insert_double_in_snd_at_start() {
+        let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(10);
+        queue.extend(iter::repeat(0).take(5));
+        queue.drain().take(5).for_each(drop);
+        queue.extend(1..=8);
+        println!("{queue:?}");
+        let u: (&[usize], &[usize]) = (&[1, 2, 3, 4, 5], &[6,7,8]);
+        assert_eq!(queue.as_slices(), u);
+        queue.insert(5, 99).expect("failed to alloc");
+        println!("{queue:?}");
+        let r: (&[usize], &[usize]) = (&[1, 2, 3, 4, 5], &[99, 6,7,8]);
+        let s = queue.as_slices();
+        assert_eq!(s, r);
+    }
+
+    #[test]
+    fn insert_double_in_snd_at_end() {
+        let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(10);
+        queue.extend(iter::repeat(0).take(5));
+        queue.drain().take(5).for_each(drop);
+        queue.extend(1..=8);
+        println!("{queue:?}");
+        let u: (&[usize], &[usize]) = (&[1, 2, 3, 4, 5], &[6,7,8]);
+        assert_eq!(queue.as_slices(), u);
+        queue.insert(8, 99).expect("failed to alloc");
+        println!("{queue:?}");
+        let r: (&[usize], &[usize]) = (&[1, 2, 3, 4, 5], &[6,7,8,99]);
+        let s = queue.as_slices();
+        assert_eq!(s, r);
+    }
+
+    #[test]
+    fn insert_double_in_snd_at_mid() {
+        let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(10);
+        queue.extend(iter::repeat(0).take(5));
+        queue.drain().take(5).for_each(drop);
+        queue.extend(1..=8);
+        println!("{queue:?}");
+        let u: (&[usize], &[usize]) = (&[1, 2, 3, 4, 5], &[6,7,8]);
+        assert_eq!(queue.as_slices(), u);
+        queue.insert(7, 99).expect("failed to alloc");
+        println!("{queue:?}");
+        let r: (&[usize], &[usize]) = (&[1, 2, 3, 4, 5], &[6,7,99,8]);
+        let s = queue.as_slices();
+        assert_eq!(s, r);
     }
 
     #[test]
@@ -946,11 +1059,9 @@ mod tests {
         let r: (&[usize], &[usize]) = (&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10], &[]);
 
         assert_eq!(queue.as_slices(), r);
-        queue.insert(0,0).expect("failed to alloc");
-        
+        queue.insert(0, 0).expect("failed to alloc");
+
         let r: (&[usize], &[usize]) = (&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], &[]);
         assert_eq!(queue.as_slices(), r);
     }
-
-    
 }

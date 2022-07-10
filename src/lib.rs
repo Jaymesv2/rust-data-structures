@@ -31,14 +31,13 @@ extern crate alloc;
 
 pub mod prelude;
 
+pub mod bitstring;
 pub mod hash_table;
 pub mod linked_lists;
 pub mod queue;
 pub mod traits;
-pub mod bitstring;
 mod util;
 
 pub use crate::hash_table::SCHashTable;
 pub use linked_lists::SinglyLinkedList;
 pub use queue::ArrayQueue;
-

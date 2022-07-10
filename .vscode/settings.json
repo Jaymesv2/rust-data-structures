@@ -1,0 +1,16 @@
+{
+    "debug.allowBreakpointsEverywhere": true,
+    "code-runner.executorMap": {
+        "rust": "cargo run"
+    },
+    "editor.semanticTokenColorCustomizations": {
+        "rules": {
+            "*.mutable": {
+                "fontStyle": "bold", // set to empty string to disable underline, which is the default
+            },
+            "operator.unsafe": "#ff6600",
+            "function.unsafe": "#ff6600",
+            "method.unsafe": "#ff6600"
+        }
+    },
+}

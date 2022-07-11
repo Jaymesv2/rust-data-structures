@@ -894,10 +894,11 @@ mod tests {
 
     #[test]
     fn make_contiguous_double() {
-        let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(20);
-        queue.extend(iter::repeat(0).take(10));
-        queue.drain().take(10).for_each(drop);
-        queue.extend(0..15);
+        let mut queue = queue_starting_at(20, 10, 0..15);
+        //let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(20);
+        //queue.extend(iter::repeat(0).take(10));
+        //queue.drain().take(10).for_each(drop);
+        //queue.extend(0..15);
         let a = queue.make_contiguous();
         for i in 0..15 {
             assert_eq!(i, a[i])
@@ -914,20 +915,14 @@ mod tests {
     fn remove_single() {
         let mut queue: ArrayQueue<usize> = (0..10).collect();
         assert_eq!(queue.remove(5), Some(5));
-        let r: (&[usize], &[usize]) = (&[0, 1, 2, 3, 4, 6, 7, 8, 9], &[]);
-        assert_eq!(queue.as_slices(), r)
+        assert_eq!(queue.as_slices(), ([0, 1, 2, 3, 4, 6, 7, 8, 9].as_ref(), [].as_ref()))
     }
 
     #[test]
     fn remove_double() {
-        let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(10);
-        queue.extend(iter::repeat(0).take(5));
-        queue.drain().take(5).for_each(drop);
-        queue.extend(0..9);
+        let mut queue = queue_starting_at(10, 5, 0..9);
         assert_eq!(queue.remove(5), Some(5));
-
-        let r: (&[usize], &[usize]) = (&[1, 2, 3, 4, 6], &[7, 8]);
-        assert_eq!(queue.as_slices(), r);
+        assert_eq!(queue.as_slices(), ([1, 2, 3, 4, 6].as_ref(), [7, 8].as_ref()));
     }
 
     #[test]
@@ -939,116 +934,81 @@ mod tests {
         println!("{queue:?}");
         queue.insert(4, 10).expect("failed to allocate");
         println!("{queue:?}");
-        let r: (&[usize], &[usize]) = (&[0, 1, 0, 2, 10, 3, 4], &[]);
-        assert_eq!(queue.as_slices(), r)
+        assert_eq!(queue.as_slices(), ([0, 1, 0, 2, 10, 3, 4].as_ref(), [].as_ref()))
     }
 
     #[test]
     fn insert_single_at_end() {
-        let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(10);
-        queue.extend(iter::repeat(0).take(5));
-        queue.drain().take(5).for_each(drop);
-        queue.extend(1..5);
+        let mut queue = queue_starting_at(10, 5, 1..5);
         println!("{queue:?}");
-        let u: (&[usize], &[usize]) = (&[1, 2, 3, 4], &[]);
-        assert_eq!(queue.as_slices(), u);
+        assert_eq!(queue.as_slices(), ([1, 2, 3, 4].as_ref(), [].as_ref()));
         queue.insert(4, 99).expect("failed to alloc");
         println!("{queue:?}");
-        let r: (&[usize], &[usize]) = (&[1, 2, 3, 4, 99], &[]);
-        assert_eq!(queue.as_slices(), r)
+        assert_eq!(queue.as_slices(),([1, 2, 3, 4, 99].as_ref(), [].as_ref()) )
     }
 
     #[test]
     fn insert_single_to_double_fst() {
-        let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(10);
-        queue.extend(iter::repeat(0).take(5));
-        queue.drain().take(5).for_each(drop);
-        queue.extend(1..6);
+        let mut queue = queue_starting_at(10, 5, 1..6);
         println!("{queue:?}");
-        let u: (&[usize], &[usize]) = (&[1, 2, 3, 4, 5], &[]);
-        assert_eq!(queue.as_slices(), u);
+        assert_eq!(queue.as_slices(), ([1, 2, 3, 4, 5].as_ref(), [].as_ref()));
         queue.insert(0, 99).expect("failed to alloc");
         println!("{queue:?}");
-        let r: (&[usize], &[usize]) = (&[99, 1, 2, 3, 4], &[5]);
-        assert_eq!(queue.as_slices(), r)
+        assert_eq!(queue.as_slices(), ([99, 1, 2, 3, 4].as_ref(), [5].as_ref()) )
     }
     #[test]
     fn insert_single_to_double() {
-        let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(10);
-        queue.extend(iter::repeat(0).take(5));
-        queue.drain().take(5).for_each(drop);
-        queue.extend(1..6);
+        let mut queue = queue_starting_at(10, 5, 1..6);
         println!("{queue:?}");
-        let u: (&[usize], &[usize]) = (&[1, 2, 3, 4, 5], &[]);
-        assert_eq!(queue.as_slices(), u);
+        assert_eq!(queue.as_slices(), ([1, 2, 3, 4, 5].as_ref(), [].as_ref()));
         queue.insert(5, 99).expect("failed to alloc");
         println!("{queue:?}");
-        let r: (&[usize], &[usize]) = (&[1, 2, 3, 4, 5], &[99]);
-        assert_eq!(queue.as_slices(), r);
+        assert_eq!(queue.as_slices(), ([1, 2, 3, 4, 5].as_ref(), [99].as_ref()));
     }
 
     #[test]
     fn insert_double() {
-        let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(10);
-        queue.extend(iter::repeat(0).take(5));
-        queue.drain().take(5).for_each(drop);
-        queue.extend(1..7);
+        let mut queue = queue_starting_at(10, 5, 1..7);
         println!("{queue:?}");
-        let u: (&[usize], &[usize]) = (&[1, 2, 3, 4, 5], &[6]);
-        assert_eq!(queue.as_slices(), u);
+        assert_eq!(queue.as_slices(), ([1, 2, 3, 4, 5].as_ref(), [6].as_ref()));
         queue.insert(3, 99).expect("failed to alloc");
         println!("{queue:?}");
-        let r: (&[usize], &[usize]) = (&[1, 2, 3, 99, 4], &[5, 6]);
-        let s = queue.as_slices();
-        assert_eq!(s, r);
+        assert_eq!(queue.as_slices(),  ([1, 2, 3, 99, 4].as_ref(), [5, 6].as_ref()));
     }
 
     #[test]
     fn insert_double_in_snd_at_start() {
-        let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(10);
-        queue.extend(iter::repeat(0).take(5));
-        queue.drain().take(5).for_each(drop);
-        queue.extend(1..=8);
+        let mut queue = queue_starting_at(10, 5, 1..9);
         println!("{queue:?}");
-        let u: (&[usize], &[usize]) = (&[1, 2, 3, 4, 5], &[6,7,8]);
-        assert_eq!(queue.as_slices(), u);
+        assert_eq!(queue.as_slices(), ([1, 2, 3, 4, 5].as_ref(), [6,7,8].as_ref()));
         queue.insert(5, 99).expect("failed to alloc");
         println!("{queue:?}");
-        let r: (&[usize], &[usize]) = (&[1, 2, 3, 4, 5], &[99, 6,7,8]);
-        let s = queue.as_slices();
-        assert_eq!(s, r);
+        assert_eq!(queue.as_slices(), ([1, 2, 3, 4, 5].as_ref(), [99, 6,7,8].as_ref()));
     }
 
     #[test]
     fn insert_double_in_snd_at_end() {
-        let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(10);
-        queue.extend(iter::repeat(0).take(5));
-        queue.drain().take(5).for_each(drop);
-        queue.extend(1..=8);
+        let mut queue = queue_starting_at(10, 5, 1..9);
         println!("{queue:?}");
-        let u: (&[usize], &[usize]) = (&[1, 2, 3, 4, 5], &[6,7,8]);
-        assert_eq!(queue.as_slices(), u);
+        assert_eq!(queue.as_slices(), ([1, 2, 3, 4, 5].as_ref(), [6,7,8].as_ref()));
         queue.insert(8, 99).expect("failed to alloc");
         println!("{queue:?}");
-        let r: (&[usize], &[usize]) = (&[1, 2, 3, 4, 5], &[6,7,8,99]);
-        let s = queue.as_slices();
-        assert_eq!(s, r);
+        assert_eq!(queue.as_slices(), ([1, 2, 3, 4, 5].as_ref(), [6,7,8,99].as_ref()));
     }
+
 
     #[test]
     fn insert_double_in_snd_at_mid() {
-        let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(10);
+        /*let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(10);
         queue.extend(iter::repeat(0).take(5));
         queue.drain().take(5).for_each(drop);
-        queue.extend(1..=8);
+        queue.extend(1..=8);*/
+        let mut queue = queue_starting_at(10, 5, 1..9);
         println!("{queue:?}");
-        let u: (&[usize], &[usize]) = (&[1, 2, 3, 4, 5], &[6,7,8]);
-        assert_eq!(queue.as_slices(), u);
+        assert_eq!(queue.as_slices(), ([1, 2, 3, 4, 5].as_ref(), [6,7,8].as_ref()));
         queue.insert(7, 99).expect("failed to alloc");
         println!("{queue:?}");
-        let r: (&[usize], &[usize]) = (&[1, 2, 3, 4, 5], &[6,7,99,8]);
-        let s = queue.as_slices();
-        assert_eq!(s, r);
+        assert_eq!(queue.as_slices(), ([1, 2, 3, 4, 5].as_ref(), [6,7,99,8].as_ref()));
     }
 
     #[test]
@@ -1056,12 +1016,16 @@ mod tests {
         let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(10);
         queue.extend(1..11);
         println!("{queue:?}");
-        let r: (&[usize], &[usize]) = (&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10], &[]);
-
-        assert_eq!(queue.as_slices(), r);
+        assert_eq!(queue.as_slices(), ([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].as_ref(), [].as_ref()));
         queue.insert(0, 0).expect("failed to alloc");
+        assert_eq!(queue.as_slices(), ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].as_ref(), [].as_ref()));
+    }
 
-        let r: (&[usize], &[usize]) = (&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], &[]);
-        assert_eq!(queue.as_slices(), r);
+    fn queue_starting_at(capacity: usize, start: usize, range: Range<usize>) -> ArrayQueue<usize> {
+        let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(capacity);
+        queue.extend(iter::repeat(0).take(start));
+        queue.drain().take(start).for_each(drop);
+        queue.extend(range);
+        queue
     }
 }

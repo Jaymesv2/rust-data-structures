@@ -307,7 +307,7 @@ impl<T, A: Allocator + Clone> Iterable for SinglyLinkedList<T, A> {
     type Iter<'a> = iters::Iter<'a, T,A>
     where
         T: 'a, A: 'a;
-    fn iter<'a>(&'a self) -> Self::Iter<'a> {
+    fn iter(&self) -> Self::Iter<'_> {
         Iter { node: &self.head }
     }
 }
@@ -317,7 +317,7 @@ impl<T, A: Allocator + Clone> IterableMut for SinglyLinkedList<T, A> {
     type IterMut<'a> = iters::IterMut<'a, T,A>
     where
         T: 'a, A: 'a;
-    fn iter_mut<'a>(&'a mut self) -> Self::IterMut<'a> {
+    fn iter_mut(&mut self) -> Self::IterMut<'_> {
         IterMut {
             node: Some(&mut self.head),
         }
@@ -329,7 +329,7 @@ impl<T, A: Allocator + Clone> Drainable for SinglyLinkedList<T, A> {
     type Drain<'a> = iters::Drain<'a, T,A>
     where
         T: 'a, A: 'a;
-    fn drain<'a>(&'a mut self) -> Self::Drain<'a> {
+    fn drain(&mut self) -> Self::Drain<'_> {
         let item = self.head.take();
         Drain {
             head_ref: &mut self.head,
@@ -385,7 +385,7 @@ mod tests {
         }
         let mut b = vec![];
         for i in a.iter() {
-            b.push(i.clone());
+            b.push(*i);
         }
         for i in 0..10 {
             assert!(b.contains(&i));

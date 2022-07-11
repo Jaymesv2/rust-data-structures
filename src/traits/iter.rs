@@ -5,7 +5,7 @@ pub trait Iterable {
     type Iter<'a>: Iterator<Item = &'a Self::Item> + 'a
     where
         Self: 'a;
-    fn iter<'a>(&'a self) -> Self::Iter<'a>;
+    fn iter(&self) -> Self::Iter<'_>;
 }
 
 pub trait IterableMut {
@@ -13,7 +13,7 @@ pub trait IterableMut {
     type IterMut<'a>: Iterator<Item = &'a mut Self::Item> + 'a
     where
         Self: 'a;
-    fn iter_mut<'a>(&'a mut self) -> Self::IterMut<'a>;
+    fn iter_mut(&mut self) -> Self::IterMut<'_>;
 }
 
 pub trait Drainable {
@@ -21,7 +21,7 @@ pub trait Drainable {
     type Drain<'a>: Iterator<Item = Self::Item> + 'a
     where
         Self: 'a;
-    fn drain<'a>(&'a mut self) -> Self::Drain<'a>;
+    fn drain(&mut self) -> Self::Drain<'_>;
 }
 
 pub trait DrainableBy {
@@ -29,7 +29,7 @@ pub trait DrainableBy {
     type DrainBy<'a, F>: Iterator<Item = Self::Item> + 'a
     where
         Self: 'a;
-    fn drain_by<'a, F>(&'a mut self) -> Self::DrainBy<'a, F>
+    fn drain_by<F>(&mut self) -> Self::DrainBy<'_, F>
     where
         F: FnMut(&Self::Item) -> bool;
 }
@@ -39,7 +39,7 @@ pub trait DrainableRange {
     type DrainBy<'a>: Iterator<Item = Self::Item> + 'a
     where
         Self: 'a;
-    fn drain_range<'a, R>(&'a mut self, range: R) -> Self::DrainBy<'a>
+    fn drain_range<R>(&mut self, range: R) -> Self::DrainBy<'_>
     where
         R: RangeBounds<usize>;
 }
@@ -49,7 +49,7 @@ pub trait RetainRange {
     type Retain<'a>: Iterator<Item = Self::Item> + 'a
     where
         Self: 'a;
-    fn retain_range<'a, R>(&'a mut self, range: R) -> Self::Retain<'a>
+    fn retain_range<R>(&mut self, range: R) -> Self::Retain<'_>
     where
         R: RangeBounds<usize>;
 }
@@ -67,7 +67,7 @@ mod impls {
     impl<T> Iterable for Vec<T> {
         type Item = T;
         type Iter<'a> = slice::Iter<'a, T> where T: 'a;
-        fn iter<'a>(&'a self) -> Self::Iter<'a> {
+        fn iter(&self) -> Self::Iter<'_> {
             self.deref().iter()
         }
     }
@@ -75,7 +75,7 @@ mod impls {
     impl<T> IterableMut for Vec<T> {
         type Item = T;
         type IterMut<'a> = slice::IterMut<'a ,T> where T: 'a;
-        fn iter_mut<'a>(&'a mut self) -> Self::IterMut<'a> {
+        fn iter_mut(&mut self) -> Self::IterMut<'_> {
             self.deref_mut().iter_mut()
         }
     }
@@ -83,7 +83,7 @@ mod impls {
     impl<T, A: Allocator> Drainable for Vec<T, A> {
         type Item = T;
         type Drain<'a> = vec::Drain<'a, T, A> where T: 'a, A: 'a;
-        fn drain<'a>(&'a mut self) -> Self::Drain<'a> {
+        fn drain(&mut self) -> Self::Drain<'_> {
             self.drain(..)
         }
     }
@@ -91,7 +91,7 @@ mod impls {
     impl<T> Iterable for VecDeque<T> {
         type Item = T;
         type Iter<'a> = vec_deque::Iter<'a, T> where T: 'a;
-        fn iter<'a>(&'a self) -> Self::Iter<'a> {
+        fn iter(&self) -> Self::Iter<'_> {
             self.iter()
         }
     }
@@ -99,7 +99,7 @@ mod impls {
     impl<T> IterableMut for VecDeque<T> {
         type Item = T;
         type IterMut<'a> = vec_deque::IterMut<'a ,T> where T: 'a;
-        fn iter_mut<'a>(&'a mut self) -> Self::IterMut<'a> {
+        fn iter_mut(&mut self) -> Self::IterMut<'_> {
             self.iter_mut()
         }
     }
@@ -107,7 +107,7 @@ mod impls {
     impl<T, A: Allocator> Drainable for VecDeque<T, A> {
         type Item = T;
         type Drain<'a> = vec_deque::Drain<'a, T, A> where T: 'a, A: 'a;
-        fn drain<'a>(&'a mut self) -> Self::Drain<'a> {
+        fn drain(&mut self) -> Self::Drain<'_> {
             self.drain(..)
         }
     }
@@ -115,7 +115,7 @@ mod impls {
     impl<T> Iterable for LinkedList<T> {
         type Item = T;
         type Iter<'a> = linked_list::Iter<'a, T> where T: 'a;
-        fn iter<'a>(&'a self) -> Self::Iter<'a> {
+        fn iter(&self) -> Self::Iter<'_> {
             self.iter()
         }
     }
@@ -123,7 +123,7 @@ mod impls {
     impl<T> IterableMut for LinkedList<T> {
         type Item = T;
         type IterMut<'a> = linked_list::IterMut<'a ,T> where T: 'a;
-        fn iter_mut<'a>(&'a mut self) -> Self::IterMut<'a> {
+        fn iter_mut(&mut self) -> Self::IterMut<'_> {
             self.iter_mut()
         }
     }
@@ -131,7 +131,7 @@ mod impls {
     impl<T> Iterable for BTreeSet<T> {
         type Item = T;
         type Iter<'a> = btree_set::Iter<'a, T> where T: 'a;
-        fn iter<'a>(&'a self) -> Self::Iter<'a> {
+        fn iter(&self) -> Self::Iter<'_> {
             self.iter()
         }
     }

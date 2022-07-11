@@ -122,7 +122,7 @@ impl<T, A: Allocator + Clone> Iterable for UnsafeSinglyLinkedList<T, A> {
     where
         T: 'a, A: 'a
     ;
-    fn iter<'a>(&'a self) -> Self::Iter<'a> {
+    fn iter(&self) -> Self::Iter<'_> {
         SLLBucketIter {
             marker: PhantomData,
             head: self.head,
@@ -135,7 +135,7 @@ impl<T, A: Allocator + Clone> Drainable for UnsafeSinglyLinkedList<T, A> {
     where
         T: 'a, A: 'a
     ;
-    fn drain<'a>(&'a mut self) -> Self::Drain<'a> {
+    fn drain(&mut self) -> Self::Drain<'_> {
         SLLBucketDrain {
             alloc: self.alloc.clone(),
             head: &mut self.head,

@@ -51,13 +51,19 @@ impl Deref for BitContainer {
         &self.0
     }
 }
-
 pub struct BitString<A: Allocator = Global> {
     data: Vec<BitContainer, A>,
 }
 
 impl BitString {
     pub fn new() -> Self {
+        Default::default()
+    }
+}
+// clippy is wrong. this cant be derived because of `A`
+#[allow(clippy::derivable_impls)]
+impl Default for BitString {
+    fn default() -> Self {
         Self {
             data: Default::default(),
         }

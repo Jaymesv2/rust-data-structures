@@ -496,7 +496,7 @@ impl<T, A: Allocator> Iterable for ArrayQueue<T, A> {
 impl<T, A: Allocator> IterableMut for ArrayQueue<T, A> {
     type IterMut<'a> = IterMut<'a, T, A> where T: 'a, A: 'a;
     type Item = T;
-    fn iter_mut<'a>(&'a mut self) -> Self::IterMut<'a> {
+    fn iter_mut(&mut self) -> Self::IterMut<'_> {
         IterMut {
             current_ind: 0,
             remaining: self.len,
@@ -508,7 +508,7 @@ impl<T, A: Allocator> IterableMut for ArrayQueue<T, A> {
 impl<T, A: Allocator> Drainable for ArrayQueue<T, A> {
     type Drain<'a> = Drain<'a, T,A> where Self: 'a;
     type Item = T;
-    fn drain<'a>(&'a mut self) -> Self::Drain<'a> {
+    fn drain(&mut self) -> Self::Drain<'_> {
         let len = self.len;
         self.len = 0;
         Drain {
@@ -887,8 +887,8 @@ mod tests {
         queue.extend(0..25);
         queue.drain().take(25).for_each(drop);
         let a = queue.make_contiguous();
-        for i in 0..25 {
-            assert_eq!(i, a[i])
+        for (i, b) in a.iter().enumerate().take(25) {
+            assert_eq!(i, *b)
         }
     }
 
@@ -900,8 +900,8 @@ mod tests {
         //queue.drain().take(10).for_each(drop);
         //queue.extend(0..15);
         let a = queue.make_contiguous();
-        for i in 0..15 {
-            assert_eq!(i, a[i])
+        for (i, b) in a.iter().enumerate().take(25) {
+            assert_eq!(i, *b)
         }
     }
 

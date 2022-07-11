@@ -17,7 +17,7 @@
     array_from_fn,
     slice_flatten,
     strict_provenance,
-    type_alias_impl_trait,
+    type_alias_impl_trait
 )]
 
 #[cfg(test)]

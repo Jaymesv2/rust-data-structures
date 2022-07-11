@@ -59,9 +59,9 @@ mod impls {
 
     use super::*;
     use crate::prelude::*;
-    use alloc::vec::{Vec, self};
     use alloc::collections::*;
     use alloc::slice;
+    use alloc::vec::{self, Vec};
 
     // vec
     impl<T> Iterable for Vec<T> {

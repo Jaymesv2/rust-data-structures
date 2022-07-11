@@ -1,4 +1,3 @@
-
 use crate::prelude::*;
 
 use core::{
@@ -18,6 +17,15 @@ where
     fn is_empty(&self) -> bool;
     fn get(&self, key: &K) -> Option<&V>;
     fn remove(&mut self, key: &K) -> Option<(K, V)>;
+}
+
+pub trait BucketIters<'a, K, V, A>:
+    Bucket<K, V, A> + Iterable<Item = (K, V)> + IterableMut<Item = (K, V)> + Drainable<Item = (K, V)>
+where
+    K: Eq + Hash,
+    V: 'a,
+    A: Allocator + Clone,
+{
 }
 
 pub trait BucketIter<'a, K, V, A>: Bucket<K, V, A> + Iterable<Item = (K, V)>

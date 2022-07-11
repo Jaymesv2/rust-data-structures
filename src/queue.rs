@@ -327,7 +327,7 @@ where
         */
 
         // 2 segments
-        // its one big unsafe block since its just copies and ifs 
+        // its one big unsafe block since its just copies and ifs
         unsafe {
             if self.start + real_index >= self.capacity {
                 // in the second segment (front of buf)
@@ -349,7 +349,7 @@ where
                             self.capacity.saturating_sub(real_index).saturating_sub(1),
                         );
                     }
-                // in the first segment (back of buf)
+                    // in the first segment (back of buf)
                 }
             // one segment
             } else {
@@ -360,8 +360,8 @@ where
                 );
             }
             ptr::write(ptr.add(real_index), value);
-        } 
-        
+        }
+
         self.len += 1;
 
         Ok(())
@@ -915,14 +915,20 @@ mod tests {
     fn remove_single() {
         let mut queue: ArrayQueue<usize> = (0..10).collect();
         assert_eq!(queue.remove(5), Some(5));
-        assert_eq!(queue.as_slices(), ([0, 1, 2, 3, 4, 6, 7, 8, 9].as_ref(), [].as_ref()))
+        assert_eq!(
+            queue.as_slices(),
+            ([0, 1, 2, 3, 4, 6, 7, 8, 9].as_ref(), [].as_ref())
+        )
     }
 
     #[test]
     fn remove_double() {
         let mut queue = queue_starting_at(10, 5, 0..9);
         assert_eq!(queue.remove(5), Some(5));
-        assert_eq!(queue.as_slices(), ([1, 2, 3, 4, 6].as_ref(), [7, 8].as_ref()));
+        assert_eq!(
+            queue.as_slices(),
+            ([1, 2, 3, 4, 6].as_ref(), [7, 8].as_ref())
+        );
     }
 
     #[test]
@@ -934,7 +940,10 @@ mod tests {
         println!("{queue:?}");
         queue.insert(4, 10).expect("failed to allocate");
         println!("{queue:?}");
-        assert_eq!(queue.as_slices(), ([0, 1, 0, 2, 10, 3, 4].as_ref(), [].as_ref()))
+        assert_eq!(
+            queue.as_slices(),
+            ([0, 1, 0, 2, 10, 3, 4].as_ref(), [].as_ref())
+        )
     }
 
     #[test]
@@ -944,7 +953,7 @@ mod tests {
         assert_eq!(queue.as_slices(), ([1, 2, 3, 4].as_ref(), [].as_ref()));
         queue.insert(4, 99).expect("failed to alloc");
         println!("{queue:?}");
-        assert_eq!(queue.as_slices(),([1, 2, 3, 4, 99].as_ref(), [].as_ref()) )
+        assert_eq!(queue.as_slices(), ([1, 2, 3, 4, 99].as_ref(), [].as_ref()))
     }
 
     #[test]
@@ -954,7 +963,7 @@ mod tests {
         assert_eq!(queue.as_slices(), ([1, 2, 3, 4, 5].as_ref(), [].as_ref()));
         queue.insert(0, 99).expect("failed to alloc");
         println!("{queue:?}");
-        assert_eq!(queue.as_slices(), ([99, 1, 2, 3, 4].as_ref(), [5].as_ref()) )
+        assert_eq!(queue.as_slices(), ([99, 1, 2, 3, 4].as_ref(), [5].as_ref()))
     }
     #[test]
     fn insert_single_to_double() {
@@ -973,29 +982,43 @@ mod tests {
         assert_eq!(queue.as_slices(), ([1, 2, 3, 4, 5].as_ref(), [6].as_ref()));
         queue.insert(3, 99).expect("failed to alloc");
         println!("{queue:?}");
-        assert_eq!(queue.as_slices(),  ([1, 2, 3, 99, 4].as_ref(), [5, 6].as_ref()));
+        assert_eq!(
+            queue.as_slices(),
+            ([1, 2, 3, 99, 4].as_ref(), [5, 6].as_ref())
+        );
     }
 
     #[test]
     fn insert_double_in_snd_at_start() {
         let mut queue = queue_starting_at(10, 5, 1..9);
         println!("{queue:?}");
-        assert_eq!(queue.as_slices(), ([1, 2, 3, 4, 5].as_ref(), [6,7,8].as_ref()));
+        assert_eq!(
+            queue.as_slices(),
+            ([1, 2, 3, 4, 5].as_ref(), [6, 7, 8].as_ref())
+        );
         queue.insert(5, 99).expect("failed to alloc");
         println!("{queue:?}");
-        assert_eq!(queue.as_slices(), ([1, 2, 3, 4, 5].as_ref(), [99, 6,7,8].as_ref()));
+        assert_eq!(
+            queue.as_slices(),
+            ([1, 2, 3, 4, 5].as_ref(), [99, 6, 7, 8].as_ref())
+        );
     }
 
     #[test]
     fn insert_double_in_snd_at_end() {
         let mut queue = queue_starting_at(10, 5, 1..9);
         println!("{queue:?}");
-        assert_eq!(queue.as_slices(), ([1, 2, 3, 4, 5].as_ref(), [6,7,8].as_ref()));
+        assert_eq!(
+            queue.as_slices(),
+            ([1, 2, 3, 4, 5].as_ref(), [6, 7, 8].as_ref())
+        );
         queue.insert(8, 99).expect("failed to alloc");
         println!("{queue:?}");
-        assert_eq!(queue.as_slices(), ([1, 2, 3, 4, 5].as_ref(), [6,7,8,99].as_ref()));
+        assert_eq!(
+            queue.as_slices(),
+            ([1, 2, 3, 4, 5].as_ref(), [6, 7, 8, 99].as_ref())
+        );
     }
-
 
     #[test]
     fn insert_double_in_snd_at_mid() {
@@ -1005,10 +1028,16 @@ mod tests {
         queue.extend(1..=8);*/
         let mut queue = queue_starting_at(10, 5, 1..9);
         println!("{queue:?}");
-        assert_eq!(queue.as_slices(), ([1, 2, 3, 4, 5].as_ref(), [6,7,8].as_ref()));
+        assert_eq!(
+            queue.as_slices(),
+            ([1, 2, 3, 4, 5].as_ref(), [6, 7, 8].as_ref())
+        );
         queue.insert(7, 99).expect("failed to alloc");
         println!("{queue:?}");
-        assert_eq!(queue.as_slices(), ([1, 2, 3, 4, 5].as_ref(), [6,7,99,8].as_ref()));
+        assert_eq!(
+            queue.as_slices(),
+            ([1, 2, 3, 4, 5].as_ref(), [6, 7, 99, 8].as_ref())
+        );
     }
 
     #[test]
@@ -1016,9 +1045,15 @@ mod tests {
         let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(10);
         queue.extend(1..11);
         println!("{queue:?}");
-        assert_eq!(queue.as_slices(), ([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].as_ref(), [].as_ref()));
+        assert_eq!(
+            queue.as_slices(),
+            ([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].as_ref(), [].as_ref())
+        );
         queue.insert(0, 0).expect("failed to alloc");
-        assert_eq!(queue.as_slices(), ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].as_ref(), [].as_ref()));
+        assert_eq!(
+            queue.as_slices(),
+            ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].as_ref(), [].as_ref())
+        );
     }
 
     fn queue_starting_at(capacity: usize, start: usize, range: Range<usize>) -> ArrayQueue<usize> {

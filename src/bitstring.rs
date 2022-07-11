@@ -153,10 +153,7 @@ impl<const N: usize> FixedBitString<N> {
 impl<const N: usize> Debug for FixedBitString<N> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         let Self { inner } = self;
-        write!(
-            f,
-            "FixedBitString<{N}> {{ data: ["
-        )?;
+        write!(f, "FixedBitString<{N}> {{ data: [")?;
         let mut iter = inner.iter();
         if let Some(i) = iter.next() {
             write!(f, "{:b}", *i)?;

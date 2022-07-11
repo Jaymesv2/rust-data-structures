@@ -54,14 +54,12 @@ impl Deref for BitContainer {
 
 pub struct BitString<A: Allocator = Global> {
     data: Vec<BitContainer, A>,
-    len: usize,
 }
 
 impl BitString {
     pub fn new() -> Self {
         Self {
             data: Default::default(),
-            len: 0,
         }
     }
 }
@@ -83,16 +81,12 @@ impl<A: Allocator> BitString<A> {
 
 pub struct FixedBitString<const N: usize> {
     inner: [BitContainer; N],
-    cursor: usize,
-    len: usize,
 }
 
 impl<const N: usize> Default for FixedBitString<N> {
     fn default() -> Self {
         FixedBitString {
             inner: [BitContainer::default(); N],
-            cursor: 0,
-            len: 0,
         }
     }
 }
@@ -158,10 +152,10 @@ impl<const N: usize> FixedBitString<N> {
 
 impl<const N: usize> Debug for FixedBitString<N> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        let Self { inner, cursor, len } = self;
+        let Self { inner } = self;
         write!(
             f,
-            "FixedBitString<{N}> {{ len: {len}, cursor: {cursor}, data: ["
+            "FixedBitString<{N}> {{ data: ["
         )?;
         let mut iter = inner.iter();
         if let Some(i) = iter.next() {

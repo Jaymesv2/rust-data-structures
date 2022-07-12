@@ -152,7 +152,7 @@ where
     /// removes the element at the back of the queue.
     /// # Examples
     /// ```
-    /// use queue::ArrayQueue;
+    /// use hash_table::ArrayQueue;
     /// let mut queue: ArrayQueue<usize> = (0..10).collect();
     /// for i in (0..10).rev() {
     ///     assert_eq!(queue.pop_back(), Some(i));
@@ -178,7 +178,7 @@ where
     /// Drops all elements in the queue leaving it empty.
     /// # Examples
     /// ```
-    /// use queue::ArrayQueue;
+    /// use hash_table::ArrayQueue;
     /// let mut queue: ArrayQueue<usize> = (0..10).collect();
     /// assert_eq!(queue.len(), 10);
     /// queue.clear();
@@ -195,7 +195,7 @@ where
     /// Gets a reference to the element at `index`.
     /// # Examples
     /// ```
-    /// use queue::ArrayQueue;
+    /// use hash_table::ArrayQueue;
     /// let mut queue: ArrayQueue<usize> = (0..10).collect();
     /// assert_eq!(queue.get(5), Some(&5));
     /// ```
@@ -206,7 +206,7 @@ where
     /// Gets a mutable reference to the element at `index`
     /// # Examples
     /// ```
-    /// use queue::ArrayQueue;
+    /// use hash_table::ArrayQueue;
     /// let mut queue: ArrayQueue<usize> = (0..10).collect();
     /// if let Some(s) = queue.get_mut(5) {
     ///     *s += 10;
@@ -372,17 +372,47 @@ where
             return None;
         }
         let elem = unsafe { ptr::read(self.ptr_to(index)) };
+        let real_index = (self.start + index) % self.capacity;
+        let ptr = self.ptr.as_ptr();
+
+        // this is only here so that the debugger can see the slice.
+        //#[cfg(test)]
+        //let a = unsafe { core::slice::from_raw_parts(ptr, self.capacity) };
+
         // move all the other elements
         // if there are 2 segments
-        if self.start + self.len > self.capacity {
-            todo!()
-        } else {
-            let num_to_move = self.len - index - 1;
+        unsafe {
+            if self.start + self.len > self.capacity {
+                // 2 segments
+                // its one big unsafe block since its just copies and ifs
 
-            unsafe {
-                ptr::copy(self.ptr_to(index + 1), self.ptr_to_mut(index), num_to_move);
+                // in the first segment (back of buf)
+                if self.start <= real_index {
+                    ptr::copy(
+                        ptr.add(self.start),
+                        ptr.add(self.start + 1),
+                        real_index.saturating_sub(self.start),
+                    );
+                    self.start += 1;
+                    // move elems after the real index to the real index
+
+                    // in the second segment
+                } else {
+                    ptr::copy(
+                        ptr.add(real_index + 1),
+                        ptr.add(real_index),
+                        self.len - index,
+                    );
+                }
+            } else {
+                ptr::copy(
+                    ptr.add(real_index + 1),
+                    ptr.add(real_index),
+                    self.len.saturating_sub(index).saturating_sub(1),
+                );
             }
         }
+
         self.len -= 1;
 
         Some(elem)
@@ -922,20 +952,104 @@ mod tests {
     }
 
     #[test]
-    fn remove_double() {
+    fn remove_double_snd_seg_begin() {
         let mut queue = queue_starting_at(10, 5, 0..9);
-        assert_eq!(queue.remove(5), Some(5));
+        assert_eq!(queue.len(), 9);
         assert_eq!(
             queue.as_slices(),
-            ([1, 2, 3, 4, 6].as_ref(), [7, 8].as_ref())
+            ([0, 1, 2, 3, 4].as_ref(), [5, 6, 7, 8].as_ref())
+        );
+        assert_eq!(queue.remove(5), Some(5));
+        assert_eq!(queue.len(), 8);
+        assert_eq!(
+            queue.as_slices(),
+            ([0, 1, 2, 3, 4].as_ref(), [6, 7, 8].as_ref())
         );
     }
 
     #[test]
+    fn remove_double_snd_seg_end() {
+        let mut queue = queue_starting_at(10, 5, 0..9);
+        assert_eq!(queue.len(), 9);
+        assert_eq!(
+            queue.as_slices(),
+            ([0, 1, 2, 3, 4].as_ref(), [5, 6, 7, 8].as_ref())
+        );
+        assert_eq!(queue.remove(8), Some(8));
+        assert_eq!(queue.len(), 8);
+        assert_eq!(
+            queue.as_slices(),
+            ([0, 1, 2, 3, 4].as_ref(), [5, 6, 7].as_ref())
+        );
+    }
+
+    #[test]
+    fn remove_double_snd_seg_mid() {
+        let mut queue = queue_starting_at(10, 5, 0..9);
+        assert_eq!(queue.len(), 9);
+        assert_eq!(
+            queue.as_slices(),
+            ([0, 1, 2, 3, 4].as_ref(), [5, 6, 7, 8].as_ref())
+        );
+        assert_eq!(queue.remove(6), Some(6));
+        assert_eq!(queue.len(), 8);
+        assert_eq!(
+            queue.as_slices(),
+            ([0, 1, 2, 3, 4].as_ref(), [5, 7, 8].as_ref())
+        );
+    }
+
+    #[test]
+    fn remove_double_fst_seg_begin() {
+        let mut queue = queue_starting_at(10, 5, 0..9);
+        assert_eq!(queue.len(), 9);
+        assert_eq!(
+            queue.as_slices(),
+            ([0, 1, 2, 3, 4].as_ref(), [5, 6, 7, 8].as_ref())
+        );
+        assert_eq!(queue.remove(0), Some(0));
+        assert_eq!(queue.len(), 8);
+        assert_eq!(
+            queue.as_slices(),
+            ([1, 2, 3, 4].as_ref(), [5, 6, 7, 8].as_ref())
+        );
+    }
+
+    #[test]
+    fn remove_double_fst_seg_end() {
+        let mut queue = queue_starting_at(10, 5, 0..10);
+        assert_eq!(queue.len(), 10);
+        assert_eq!(
+            queue.as_slices(),
+            ([0, 1, 2, 3, 4].as_ref(), [5, 6, 7, 8, 9].as_ref())
+        );
+        assert_eq!(queue.remove(4), Some(4));
+        assert_eq!(queue.len(), 9);
+        assert_eq!(
+            queue.as_slices(),
+            ([0, 1, 2, 3].as_ref(), [5, 6, 7, 8, 9].as_ref())
+        );
+    }
+
+    #[test]
+    fn remove_double_fst_seg_mid() {
+        let mut queue = queue_starting_at(10, 5, 0..10);
+        assert_eq!(queue.len(), 10);
+        assert_eq!(
+            queue.as_slices(),
+            ([0, 1, 2, 3, 4].as_ref(), [5, 6, 7, 8, 9].as_ref())
+        );
+        assert_eq!(queue.remove(3), Some(3));
+        assert_eq!(queue.len(), 9);
+        assert_eq!(
+            queue.as_slices(),
+            ([0, 1, 2, 4].as_ref(), [5, 6, 7, 8, 9].as_ref())
+        );
+    }
+    #[test]
     fn insert_single() {
         let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(10);
         queue.extend(0..=4);
-        println!("{queue:?}");
         queue.insert(2, 0).expect("failed to allocate");
         println!("{queue:?}");
         queue.insert(4, 10).expect("failed to allocate");
@@ -945,7 +1059,6 @@ mod tests {
             ([0, 1, 0, 2, 10, 3, 4].as_ref(), [].as_ref())
         )
     }
-
     #[test]
     fn insert_single_at_end() {
         let mut queue = queue_starting_at(10, 5, 1..5);

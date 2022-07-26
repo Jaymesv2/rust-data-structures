@@ -11,6 +11,8 @@ use core::{
 mod iters;
 use iters::*;
 
+const DEFAULT_SIZE: NonZeroUsize = NonZeroUsize::new(16).unwrap();
+
 /// A double ended queue using a growable ring buffer.
 ///
 /// Inspired by the stdlib implementaiton.
@@ -26,8 +28,6 @@ where
     ptr: NonNull<T>,
     alloc: A,
 }
-
-const DEFAULT_SIZE: NonZeroUsize = NonZeroUsize::new(16).unwrap();
 
 impl<T> ArrayQueue<T, Global> {
     pub fn new() -> Self {

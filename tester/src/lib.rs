@@ -7,6 +7,8 @@
     allocator_api
 )]
 
+mod tester;
+
 use std::{
     alloc::Global,
     collections::{hash_map::RandomState, HashMap},
@@ -21,7 +23,6 @@ use rand::{
     Rng, SeedableRng,
 };
 
-use hash_table::hash_table::SCHashTable;
 use hash_table::traits::hash_table::HashTable;
 
 const MIN_KEYS: usize = 1;
@@ -35,10 +36,13 @@ fn run_test() {
     let count = 1000;
     for _ in 0..count {
         //if let Err(report) = test_hashtable::<crate::HashTable<u8, i64, RandomState>, _, _, RandomState, StdRng>(seed, 4, Some(3)) {
-        if let Err(report) =
-            test_hashtable::<SCHashTable<u8, i64, RandomState, Global>, _, _, RandomState, StdRng>(
-                seed, 1000, None,
-            )
+        if let Err(report) = test_hashtable::<
+            hash_table::hash_table::SCHashTable<u8, i64, RandomState, Global>,
+            _,
+            _,
+            RandomState,
+            StdRng,
+        >(seed, 1000, None)
         {
             println!("{:?}", report);
             report.playback();

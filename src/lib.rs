@@ -14,7 +14,7 @@
     negative_impls,
     int_roundings,
     ptr_metadata,
-    array_from_fn,
+    array_try_from_fn,
     slice_flatten,
     strict_provenance,
     type_alias_impl_trait
@@ -22,11 +22,10 @@
 
 #[cfg(test)]
 extern crate std;
-
-//#![warn(unsafe_code)]
-
 #[cfg(test)]
 extern crate test;
+
+//#![warn(unsafe_code)]
 
 extern crate alloc;
 

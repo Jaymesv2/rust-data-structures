@@ -35,7 +35,6 @@ class Category a where
 class Category cat where
   id  :: cat a a
   (.) :: cat b c -> cat a b -> cat a c
-*/
 // category is the function itself
 pub trait Category<Arr> where Arr: Fn(Self::A) -> Self::B {
     type A;
@@ -48,6 +47,7 @@ pub trait Category<Arr> where Arr: Fn(Self::A) -> Self::B {
 
     //fn dot(f1: Fn(B,C), f2: Fn(A,B)) -> dyn Fn()
 }
+*/
 /*
 newtype Kleisli m a b = Kleisli { runKleisli :: a -> m b }
 
@@ -60,9 +60,6 @@ instance Monad m => Category (Kleisli m) where
 
 
 */
-
-
-
 
 pub trait Applicative: Functor {
     fn lift_a2<F, B, C>(self, b: Self::Wrapped<B>, f: F) -> Self::Wrapped<C>
@@ -131,10 +128,6 @@ impl<T> Semigroup for Vec<T> {
     }
 }
 
-trait Zero {
-    fn zero() -> Self;
-}
-
 use core::ops::Add;
 
 struct Sum<T>(pub T);
@@ -145,12 +138,13 @@ impl<T: Add<Output = T>> Semigroup for Sum<T> {
         Sum(a)
     }
 }
-
+/*
 impl<T: Add<Output = T> + Zero> Monoid for Sum<T> {
     fn mempty() -> Self {
         Sum(T::zero())
     }
 }
+*/
 
 
 impl<M: Monad> MonadTrans for IdentityT<M> {
@@ -293,8 +287,20 @@ mod tests {
     use super::*;
     #[test]
     fn option_functor() {
+        fn mapper<A: Functor<Unwrapped = i32>>(a: A) -> A::Wrapped<i32> {
+            a.map(|f| f*4)
+        }
+
         let x2 = |i| i * 2;
         let i = Option::<i32>::pure(32).map(x2);
+        let mut lst = Vec::new();
+        lst.push(1);
+        lst.push(5);
+        lst.push(9);
+        let lst_mapped = mapper(lst);
+        let a: Option<i32> = Some(8);
+        let b = mapper(a);
+        assert_eq!(b, Some(32));
         assert_eq!(i, Some(64));
     }
     #[test]

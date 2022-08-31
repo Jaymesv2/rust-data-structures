@@ -97,7 +97,7 @@ where
             ptr::copy_nonoverlapping(snd.as_ptr(), new_ptr.as_ptr().add(fst.len()), snd.len());
         }
     }
-
+    /// This needs to be audited
     pub fn shrink_to(&mut self, size: usize) -> Result<(), AllocError> {
         let _ = self.make_contiguous();
         let size = core::cmp::max(size, self.len);
@@ -259,33 +259,30 @@ where
     pub fn make_contiguous(&mut self) -> &mut [T] {
         // 2 slices
         if self.start + self.len > self.capacity {
+            let ptr = self.ptr.as_ptr();
+            /*
             unsafe {
                 // this is terrible
                 self.grow_to(NonZeroUsize::new_unchecked(self.capacity))
                     .unwrap();
             }
-            /*
-
-            let dist = self.start;
-            let count = (self.start + self.len) % self.capacity;
-            for i in 0..count {
+            */
+            //let _slice = unsafe {core::slice::from_raw_parts_mut(ptr, self.capacity)}; // so I can see the array in the debugger.
+            // front and end correspond to the physical front and end of the array.
+            let items_at_end = self.capacity-self.start;
+            let items_at_front = (self.start+self.len)%self.capacity;
+            let copy_block_size = self.start-items_at_front;
+            let mut x = 0;
+            while x < items_at_end {
+                let block_size = core::cmp::min(copy_block_size, items_at_end-x);// - x);
                 unsafe {
-                    ptr::swap(self.ptr.as_ptr().add(i),self.ptr.as_ptr().add(dist+i));
+                    // copy elements forward by one
+                    ptr::copy(ptr.add(x), ptr.add(x+block_size), items_at_front);
+                    // copy the element at logical index x to physical space x;
+                    ptr::copy_nonoverlapping(ptr.add(x+self.start), ptr.add(x), block_size);
                 }
+                x += block_size;
             }
-            unsafe {
-                let a = self.len - count;
-                ptr::copy(self.ptr.as_ptr().add(dist+count), self.ptr.as_ptr().add(), a);
-            }
-            todo!() */
-            /*let end = (self.start+self.len())%self.capacity;
-            let snd_len = self.len - end;
-
-            unsafe {ptr::copy(self.ptr.as_ptr().add(self.start), self.ptr.as_ptr().add(end), snd_len)};
-
-            for i in 0..snd_len {
-                unsafe{ptr::swap(self.ptr.as_ptr().add(i), self.ptr.as_ptr().add(i+snd_len))}
-            }*/
         } else {
             unsafe {
                 ptr::copy(
@@ -925,13 +922,21 @@ mod tests {
     #[test]
     fn make_contiguous_double() {
         let mut queue = queue_starting_at(20, 10, 0..15);
-        //let mut queue: ArrayQueue<usize> = ArrayQueue::with_capacity(20);
-        //queue.extend(iter::repeat(0).take(10));
-        //queue.drain().take(10).for_each(drop);
-        //queue.extend(0..15);
         let a = queue.make_contiguous();
         for (i, b) in a.iter().enumerate().take(25) {
             assert_eq!(i, *b)
+        }
+    }
+    #[ignore = "this takes forever to run on miri"]
+    #[test]
+    fn make_contiguous_fuzz() {
+        for cap in 20..25 {
+            for start in 1..cap {
+                for len in 1..cap {
+                    let mut queue = queue_starting_at(cap, start, 0..len);
+                    queue.make_contiguous().iter().enumerate().take(len).for_each(|(i,b)| assert_eq!(i, *b));
+                }
+            }
         }
     }
 

@@ -260,26 +260,20 @@ where
         // 2 slices
         if self.start + self.len > self.capacity {
             let ptr = self.ptr.as_ptr();
-            /*
-            unsafe {
-                // this is terrible
-                self.grow_to(NonZeroUsize::new_unchecked(self.capacity))
-                    .unwrap();
-            }
-            */
             //let _slice = unsafe {core::slice::from_raw_parts_mut(ptr, self.capacity)}; // so I can see the array in the debugger.
             // front and end correspond to the physical front and end of the array.
-            let items_at_end = self.capacity-self.start;
-            let items_at_front = (self.start+self.len)%self.capacity;
-            let copy_block_size = self.start-items_at_front;
+            let items_at_end = self.capacity - self.start;
+            let items_at_front = (self.start + self.len) % self.capacity;
+            let copy_block_size = self.start - items_at_front;
+
             let mut x = 0;
             while x < items_at_end {
-                let block_size = core::cmp::min(copy_block_size, items_at_end-x);// - x);
+                let block_size = core::cmp::min(copy_block_size, items_at_end - x); // - x);
                 unsafe {
-                    // copy elements forward by one
-                    ptr::copy(ptr.add(x), ptr.add(x+block_size), items_at_front);
+                    // copy elements forward by block size
+                    ptr::copy(ptr.add(x), ptr.add(x + block_size), items_at_front);
                     // copy the element at logical index x to physical space x;
-                    ptr::copy_nonoverlapping(ptr.add(x+self.start), ptr.add(x), block_size);
+                    ptr::copy_nonoverlapping(ptr.add(x + self.start), ptr.add(x), block_size);
                 }
                 x += block_size;
             }
@@ -297,32 +291,12 @@ where
     }
 
     pub fn insert(&mut self, index: usize, value: T) -> Result<(), AllocError> {
-        assert!(index <= self.len + 1, "out of bounds");
+        debug_assert!(index <= self.len + 1, "out of bounds");
         if self.len + 1 >= self.capacity {
             self.grow()?;
         }
         let real_index = (self.start + index) % self.capacity;
         let ptr = self.ptr.as_ptr();
-
-        // this is only here so that the debugger can see the slice.
-        //#[cfg(test)]
-        //let a = unsafe { core::slice::from_raw_parts(ptr, self.capacity) };
-        /*
-            if there will be 2 segments then
-                if the real index is in the second segment (the one at the "front" of the ring) then
-                    move the elements in front forward.
-                else if the real index is in the first segment("back of the ring") then
-                    move the front elements forward, copy the back elem to front
-                    if real index is not at the end of the buffer then
-                        copy remaining elements after the real index forward
-                    end
-                end
-            else
-                copy elements after real index forward.
-
-            write to real index.
-        */
-
         // 2 segments
         // its one big unsafe block since its just copies and ifs
         unsafe {
@@ -930,11 +904,17 @@ mod tests {
     #[ignore = "this takes forever to run on miri"]
     #[test]
     fn make_contiguous_fuzz() {
-        for cap in 20..25 {
-            for start in 1..cap {
-                for len in 1..cap {
+        for cap in 0..25 {
+            for start in 0..cap {
+                for len in 0..cap {
                     let mut queue = queue_starting_at(cap, start, 0..len);
-                    queue.make_contiguous().iter().enumerate().take(len).for_each(|(i,b)| assert_eq!(i, *b));
+                    assert_eq!(queue.len(), len);
+                    queue
+                        .make_contiguous()
+                        .iter()
+                        .enumerate()
+                        .take(len)
+                        .for_each(|(i, b)| assert_eq!(i, *b));
                 }
             }
         }

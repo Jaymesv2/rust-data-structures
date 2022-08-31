@@ -33,9 +33,9 @@ pub mod prelude;
 pub mod bitstring;
 pub mod hash_table;
 pub mod linked_lists;
+pub mod persistent;
 pub mod queue;
 pub mod traits;
-pub mod persistent;
 mod util;
 
 pub use crate::hash_table::SCHashTable;

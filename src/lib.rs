@@ -8,7 +8,6 @@
     generators,
     allocator_api,
     box_into_inner,
-    let_chains,
     const_option,
     generic_const_exprs,
     negative_impls,
@@ -36,6 +35,7 @@ pub mod hash_table;
 pub mod linked_lists;
 pub mod queue;
 pub mod traits;
+pub mod persistent;
 mod util;
 
 pub use crate::hash_table::SCHashTable;

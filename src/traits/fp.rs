@@ -296,7 +296,7 @@ mod tests {
         lst.push(1);
         lst.push(5);
         lst.push(9);
-        let lst_mapped = mapper(lst);
+        //let lst_mapped = mapper(lst);
         let a: Option<i32> = Some(8);
         let b = mapper(a);
         assert_eq!(b, Some(32));

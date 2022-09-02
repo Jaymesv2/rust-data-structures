@@ -9,7 +9,7 @@ pub trait Functor {
     fn replace<F,B: Clone>(self, a: B) -> Self::Wrapped<B> where Self: Sized {
         //let f = move |_: Self::Unwrapped| -> B {a.clone()};
         self.fmap(move |_| a.clone())
-    } 
+    }
      */
 }
 /*
@@ -21,10 +21,10 @@ pub trait Pointed: Functor {
 /*
 Category is a relatively recent addition to the Haskell standard libraries. It generalizes the notion of function composition to general “morphisms”.
 
-The definition of the Category type class (from Control.Category; haddock) is shown below. 
-For ease of reading, note that I have used an infix type variable `arr`, in parallel with the infix function type constructor (->). 
-∗ This syntax is not part of Haskell 2010. 
-The second definition shown is the one used in the standard libraries. 
+The definition of the Category type class (from Control.Category; haddock) is shown below.
+For ease of reading, note that I have used an infix type variable `arr`, in parallel with the infix function type constructor (->).
+∗ This syntax is not part of Haskell 2010.
+The second definition shown is the one used in the standard libraries.
 For the remainder of this document, I will use the infix type constructor `arr` for Category as well as Arrow
 
 class Category a where
@@ -145,7 +145,6 @@ impl<T: Add<Output = T> + Zero> Monoid for Sum<T> {
     }
 }
 */
-
 
 impl<M: Monad> MonadTrans for IdentityT<M> {
     type Base = M;
@@ -288,7 +287,7 @@ mod tests {
     #[test]
     fn option_functor() {
         fn mapper<A: Functor<Unwrapped = i32>>(a: A) -> A::Wrapped<i32> {
-            a.map(|f| f*4)
+            a.map(|f| f * 4)
         }
 
         let x2 = |i| i * 2;
@@ -306,7 +305,7 @@ mod tests {
     #[test]
     fn vec_functor() {
         let list: Vec<u32> = (0..100).collect();
-        let add_5 = |x| x+5;
+        let add_5 = |x| x + 5;
         let list2 = list.map(add_5);
         assert_eq!((5..105).collect::<Vec<u32>>(), list2);
     }

@@ -259,13 +259,24 @@ impl<'a, T, A: Allocator + Clone> CursorMut<'a, T, A> {
         self.node.map(|mut x| unsafe { &mut x.as_mut().value })
     }
 
-    pub fn remove_next(&mut self) -> Option<T> {todo!()}
-    pub fn remove_prev(&mut self) -> Option<T> {todo!()}
-    pub fn remove_current(&mut self) -> Option<T> {todo!()}
-    pub fn append_next(&mut self, _other: DoublyLinkedList<T>) {todo!()}
-    pub fn append_prev(&mut self, _other: DoublyLinkedList<T>) {todo!()}
-    pub fn split(&mut self) -> DoublyLinkedList<T> {todo!()}
-
+    pub fn remove_next(&mut self) -> Option<T> {
+        todo!()
+    }
+    pub fn remove_prev(&mut self) -> Option<T> {
+        todo!()
+    }
+    pub fn remove_current(&mut self) -> Option<T> {
+        todo!()
+    }
+    pub fn append_next(&mut self, _other: DoublyLinkedList<T>) {
+        todo!()
+    }
+    pub fn append_prev(&mut self, _other: DoublyLinkedList<T>) {
+        todo!()
+    }
+    pub fn split(&mut self) -> DoublyLinkedList<T> {
+        todo!()
+    }
 
     /*
     pub fn remove(&mut self) -> Result<Direction, ()> {

@@ -16,7 +16,8 @@
     array_try_from_fn,
     slice_flatten,
     strict_provenance,
-    type_alias_impl_trait
+    type_alias_impl_trait,
+    let_chains
 )]
 
 #[cfg(test)]
@@ -33,7 +34,7 @@ pub mod prelude;
 pub mod bitstring;
 pub mod hash_table;
 pub mod linked_lists;
-pub mod persistent;
+//pub mod persistent;
 pub mod queue;
 pub mod traits;
 mod util;

@@ -4,7 +4,6 @@
     test,
     variant_count,
     iter_intersperse,
-    generic_associated_types,
     generators,
     allocator_api,
     box_into_inner,

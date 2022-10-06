@@ -41,7 +41,8 @@ impl<T> ArrayQueue<T, Global> {
 impl<T, A> ArrayQueue<T, A>
 where
     A: Allocator,
-{
+{   
+    /// Creates a new queue using the specified allocator.
     pub fn new_in(alloc: A) -> Self {
         ArrayQueue {
             len: 0,
@@ -51,6 +52,8 @@ where
             alloc,
         }
     }
+
+    /// Creates a new queue with a specified capacity using the provided allocator.
     pub fn with_capacity_in(capacity: usize, alloc: A) -> Result<Self, AllocError> {
         let mut queue = Self::new_in(alloc);
         if let Some(s) = NonZeroUsize::new(capacity) {
@@ -58,7 +61,7 @@ where
         }
         Ok(queue)
     }
-
+    /// Shows the 
     pub fn as_slices(&self) -> (&[T], &[T]) {
         let len1 = core::cmp::min(self.len, self.capacity - self.start);
         unsafe {
@@ -249,15 +252,16 @@ where
         self.ptr.as_ptr().add((self.start + index) % self.capacity)
     }
 
+    /// Ensures that `count` elements will be strf
     pub fn reserve(&mut self, count: usize) -> Result<(), AllocError> {
         if count != 0 && self.len+count > self.capacity && let Some(new_cap) = NonZeroUsize::new(count+self.len)  {
             self.grow_to(new_cap)?;
         }
         Ok(())
     }
-
+    /// Internally rearranges the elements of the queue into a contiguous list and returns a mutable slice to that array
     pub fn make_contiguous(&mut self) -> &mut [T] {
-        // 2 slices
+        // if there are 2 slices
         if self.start + self.len > self.capacity {
             let ptr = self.ptr.as_ptr();
             //let _slice = unsafe {core::slice::from_raw_parts_mut(ptr, self.capacity)}; // so I can see the array in the debugger.
@@ -268,7 +272,7 @@ where
 
             let mut x = 0;
             while x < items_at_end {
-                let block_size = core::cmp::min(copy_block_size, items_at_end - x); // - x);
+                let block_size = core::cmp::min(copy_block_size, items_at_end - x);
                 unsafe {
                     // copy elements forward by block size
                     ptr::copy(ptr.add(x), ptr.add(x + block_size), items_at_front);
@@ -278,6 +282,7 @@ where
                 x += block_size;
             }
         } else {
+            // If there is only one slice then move it back so the first element is at 0
             unsafe {
                 ptr::copy(
                     self.ptr.as_ptr().add(self.start),
@@ -289,7 +294,7 @@ where
         self.start = 0;
         unsafe { core::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.len) }
     }
-
+    /// Inserts an element at the specified index. 
     pub fn insert(&mut self, index: usize, value: T) -> Result<(), AllocError> {
         debug_assert!(index <= self.len + 1, "out of bounds");
         if self.len + 1 >= self.capacity {
@@ -320,7 +325,6 @@ where
                             self.capacity.saturating_sub(real_index).saturating_sub(1),
                         );
                     }
-                    // in the first segment (back of buf)
                 }
             // one segment
             } else {
@@ -337,7 +341,8 @@ where
 
         Ok(())
     }
-
+    /// Removes the element at the specified element. 
+    /// Returns None if no element was found at the given index.
     pub fn remove(&mut self, index: usize) -> Option<T> {
         if index > self.len {
             return None;
@@ -388,18 +393,18 @@ where
 
         Some(elem)
     }
-
+    /// Shrinks the allocation to exactly fit the elements in the queue
     pub fn shrink_to_fit(&mut self) -> Result<(), AllocError> {
         self.shrink_to(self.len)
     }
-
+    /// truncates all after size.
     pub fn truncate(&mut self, size: usize) {
         if size < self.len {
             let num_to_drop = size - self.len;
             self.drain().rev().take(num_to_drop).for_each(|f| drop(f));
         }
     }
-
+    /// grows the queues allocation to be able to hold more elements
     fn grow(&mut self) -> Result<(), AllocError> {
         let new_capacity = NonZeroUsize::new(self.capacity * 2).unwrap_or(DEFAULT_SIZE);
         self.grow_to(new_capacity)
@@ -425,39 +430,48 @@ where
             })
         })
     }
-
+    
+    /// Gets a reference to the first element in the queue.
     pub fn front(&self) -> Option<&T> {
         self.get(0)
     }
 
+    /// Gets a mutable reference to the first element in the queue.
     pub fn front_mut(&mut self) -> Option<&mut T> {
         self.get_mut(0)
     }
 
+    /// Checks if queue contains a specific elemenet
     pub fn contains<Q: PartialEq<T>>(&self, item: &Q) -> bool {
         self.iter().any(|i| item == i)
     }
 
+    /// Returns a reference to the queues allocator
     pub fn allocator(&self) -> &A {
         &self.alloc
     }
 
+    /// Gets a reference to the last element in the queue
     pub fn back(&self) -> Option<&T> {
         self.get(self.len() - 1)
     }
 
+    /// Gets a mutable reference to the last element in the queue
     pub fn back_mut(&mut self) -> Option<&mut T> {
         self.get_mut(self.len() - 1)
     }
 
+    /// Returns the length of the list
     pub fn len(&self) -> usize {
         self.len
     }
 
+    /// Returns how many elements the queues current allocation can hold before needing to grow said allocation.
     pub fn capacity(&self) -> usize {
         self.capacity
     }
 
+    /// Checks if the queue is empty
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }

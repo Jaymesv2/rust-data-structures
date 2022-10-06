@@ -93,30 +93,21 @@ impl<T, A: Allocator + Clone> SinglyLinkedList<T, A> {
         f: F,
     ) -> Option<&Option<Box<SinglyLinkedListNode<T, A>, A>>> {
         let mut current = &self.head;
-        loop {
-            match current {
-                None => return None,
-                Some(node) if (f)(&node.deref().value) => return Some(current),
-                Some(node) => {
-                    current = &node.next;
-                }
+        while let Some(node) = current {
+            if (f)(&node.deref().value) {
+                return Some(current);
             }
+            current = &node.next;
         }
+        None
         //self.iter_mut().find(f)
     }
 
-    fn remove_by<F: Fn(&T) -> bool>(&mut self, f: F) -> Option<T> {
+    pub fn remove_by<F: Fn(&T) -> bool>(&mut self, f: F) -> Option<T> {
         let ptr = self.find_ref_mut_by(f)?;
-
-        if let Some(mut node) = ptr.take() {
-            *ptr = node.next.take();
-            Some(node.value)
-        } else {
-            unsafe {
-                // this is fine since find_by will only return Some if the inner option is also Some
-                unreachable_unchecked()
-            }
-        }
+        let mut node = unsafe {ptr.take().unwrap_unchecked()};
+        *ptr = node.next.take();
+        Some(node.value)
     }
 
     pub fn get_mut_by<F: Fn(&T) -> bool>(&mut self, f: F) -> Option<&mut T> {

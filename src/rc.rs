@@ -52,9 +52,9 @@ use core::ops::Deref;
     !Sync
 */
 #[repr(transparent)]
-pub struct RcStubb<T: ?Sized, S: RcStub = StRc>(<S as RcStub>::Counter<T>);
+pub struct Rc<T: ?Sized, S: RcStub = StRc>(<S as RcStub>::Counter<T>);
 
-impl<T: ?Sized, S: RcStub> RcStubb<T, S> {
+impl<T: ?Sized, S: RcStub> Rc<T, S> {
     #[inline(always)]
     pub fn as_ptr(this: &Self) -> *const T {
         S::Counter::as_ptr(&this.0)
@@ -106,7 +106,7 @@ impl<T: ?Sized, S: RcStub> RcStubb<T, S> {
     }
 }
 
-impl<T, S: RcStub> RcStubb<T, S>
+impl<T, S: RcStub> Rc<T, S>
 where
     S::Counter<T>: RctSizedT<T> 
 {
@@ -128,7 +128,7 @@ where
     }
 }
 
-impl<T: Clone, S: RcStub> RcStubb<T, S>
+impl<T: Clone, S: RcStub> Rc<T, S>
 where
     S::Counter<T>: RctCloneableT<T>,
 {
@@ -137,14 +137,14 @@ where
     }
 }
 
-impl<T: ?Sized, S: RcStub> Deref for RcStubb<T, S> {
+impl<T: ?Sized, S: RcStub> Deref for Rc<T, S> {
     type Target = T;
     fn deref(&self) -> &Self::Target {
         S::Counter::deref(&self.0)
     }
 }
 
-impl<T: ?Sized, S: RcStub> Clone for RcStubb<T, S> {
+impl<T: ?Sized, S: RcStub> Clone for Rc<T, S> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
@@ -469,16 +469,17 @@ mod tests {
     where
         R: RcStub,
     {
-        inner: RcStubb<T, R>,
+        inner: Rc<T, R>,
     }
-
+    /*
     impl<T, R: RcStub> TestStruct<T, R> {
         fn new(item: T) -> Self {
             Self {
-                inner: RcStubb::new(item),
+                inner: Rc::new(item),
             }
         }
     }
+    */
 
     impl<T, R: RcStub> Clone for TestStruct<T, R> {
         fn clone(&self) -> Self {
@@ -491,13 +492,12 @@ mod tests {
     #[test]
     fn rc_test() {
         use std::thread::spawn;
-        let non_safe_struct = TestStruct::<_, AtRc>::new(5);
+        let non_safe_struct: Rc<_, AtRc> = Rc::new(5);
         for _ in 0..5 {
             let mut x = non_safe_struct.clone();
             spawn(move || {
-                //let c = x;
-                let u: &mut i32 = RcStubb::make_mut(&mut x.inner);
-                //println!("{x}");
+                let u: &mut i32 = Rc::make_mut(&mut x);
+                println!("{u}");
             });
         }
     }

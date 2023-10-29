@@ -4,7 +4,8 @@
     test,
     variant_count,
     iter_intersperse,
-    generators,
+    //generators,
+    //coroutine,
     allocator_api,
     box_into_inner,
     const_option,
@@ -17,7 +18,9 @@
     strict_provenance,
     type_alias_impl_trait,
     let_chains,
-    step_trait
+    step_trait,
+    ptr_as_uninit,
+    adt_const_params
 )]
 
 #[cfg(test)]
@@ -39,6 +42,8 @@ pub mod rc;
 pub mod queue;
 pub mod traits;
 mod util;
+//mod map;
+pub mod heap;
 
 pub use crate::hash_table::SCHashTable;
 pub use linked_lists::SinglyLinkedList;

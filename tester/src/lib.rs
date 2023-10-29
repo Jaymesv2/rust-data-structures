@@ -2,8 +2,7 @@
     test,
     variant_count,
     iter_intersperse,
-    generic_associated_types,
-    generators,
+    //generators,
     allocator_api
 )]
 
